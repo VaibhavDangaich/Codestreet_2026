@@ -341,6 +341,10 @@ for i, (t, col, body) in enumerate(cards3):
     box(s, cx + 0.3, cy + 0.28, 0.5, 0.11, fill=col)
     text(s, cx + 0.3, cy + 0.5, 5.0, 0.4, [[R(t, 16, WHITE, True)]])
     text(s, cx + 0.3, cy + 1.0, 5.05, 0.9, [[R(body, 11.5, MUTED)]])
+text(s, 0.9, 6.6, 11.5, 0.35, [[
+    R("In our research we found no prior example — hackathon or production — of rule "
+      "citations in customer replies, or counterfactual offers in a servicing conversation.",
+      11, ACCENT2, True)]], align=PP_ALIGN.CENTER)
 footer(s)
 
 # ========================= SLIDE 7 — METRICS ==============================
@@ -376,22 +380,25 @@ footer(s)
 # ========================= SLIDE 8 — WHY AMEX ==============================
 s = slide()
 header(s, "Why Amex · why now", "The governance layer that makes autonomy deployable")
-bullets(s, 0.9, 2.2, 11.4, [
+bullets(s, 0.9, 2.1, 11.4, [
     ("Amex’s 2026 direction is agentic commerce — agents that decide and act",
      "— this is exactly that, applied to servicing."),
+    ("No deployed bank assistant performs autonomous write-actions on accounts today",
+     "— Erica uses curated responses; Wells Fargo’s LLM only parses intent; "
+     "Capital One kept its agent off bank accounts. We show how to do it safely."),
     ("Only 21% of enterprises have mature agentic-AI governance, yet 74% expect to use AI agents by 2027",
      "(Deloitte) — most are scaling agents without the guardrails."),
     ("Deloitte names the missing controls: audit trails of every agent action + human-approval boundaries",
      "— the exact two things we built."),
-], gap=0.9, size=15.5)
-box(s, 0.9, 5.05, 11.5, 1.0, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
-text(s, 1.2, 5.2, 11, 0.8, [[
-    R("“With every use case, we’ve ensured there is human oversight.”", 15, WHITE, True),
-    R("   — Ravi Radhakrishnan, EVP & CIO, American Express (Forbes, 2025)", 12.5, MUTED)]])
-text(s, 0.9, 6.3, 11.5, 0.5, [[
+], gap=0.8, size=14)
+box(s, 0.9, 5.35, 11.5, 0.92, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
+text(s, 1.2, 5.5, 11, 0.7, [[
+    R("“With every use case, we’ve ensured there is human oversight.”", 14.5, WHITE, True),
+    R("   — Ravi Radhakrishnan, EVP & CIO, American Express (Forbes, 2025)", 12, MUTED)]])
+text(s, 0.9, 6.45, 11.5, 0.5, [[
     R("Sources:  ", 9.5, ACCENT, True),
-    R("Deloitte, “Agentic AI is scaling faster than guardrails” (2025)   ·   "
-      "Forbes / Peter High, “Ravi Radhakrishnan on Driving AI Innovation at American Express” (May 2025)",
+    R("Deloitte, “Agentic AI is scaling faster than guardrails” (2025) · Forbes/Peter High (May 2025) · "
+      "American Banker (Erica) · VentureBeat (Fargo) · The Financial Brand (Capital One)",
       9.5, MUTED)]])
 footer(s)
 

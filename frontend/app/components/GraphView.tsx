@@ -62,21 +62,23 @@ export default function GraphView() {
           {
             selector: "edge",
             style: {
-              width: 1,
-              "line-color": "#DBE3EE",
-              "target-arrow-color": "#B6C2D4",
+              width: 1.2,
+              "line-color": "#93A5BC",
+              "line-opacity": 0.75,
+              "target-arrow-color": "#64748B",
               "target-arrow-shape": "triangle",
               "arrow-scale": 0.6,
               "curve-style": "straight",
-              // only the analytically meaningful labels; column position
-              // already tells you IN / ON / PERFORMED_BY
+              // only APPLIED_RULE gets a label — the spine's arrows already read
+              // as sequence, and column position implies IN / ON / PERFORMED_BY
               label: (e: any) =>
-                ["NEXT", "APPLIED_RULE"].includes(e.data("label"))
-                  ? e.data("label")
-                  : "",
+                e.data("label") === "APPLIED_RULE" ? "APPLIED_RULE" : "",
               "font-size": 7,
-              color: "#94A3B8",
+              color: "#DB2777",
               "text-rotation": "autorotate",
+              "text-background-color": "#ffffff",
+              "text-background-opacity": 0.85,
+              "text-background-padding": "1px",
             },
           },
           {
@@ -85,6 +87,7 @@ export default function GraphView() {
               width: 2.5,
               "line-color": "#2563EB",
               "target-arrow-color": "#2563EB",
+              "line-opacity": 1,
             },
           },
           {
@@ -94,6 +97,7 @@ export default function GraphView() {
               "line-color": "#DB2777",
               "target-arrow-color": "#DB2777",
               "line-style": "dashed",
+              "line-opacity": 1,
               color: "#DB2777",
             },
           },

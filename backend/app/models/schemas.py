@@ -48,3 +48,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     resolution: Resolution
     classification: Optional[Classification] = None
+    # audit entries generated while handling THIS turn — powers the UI's
+    # visible decision-pipeline strip under each reply
+    trace: list[dict] = Field(default_factory=list)

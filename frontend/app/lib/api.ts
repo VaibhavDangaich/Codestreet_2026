@@ -18,6 +18,7 @@ export type Classification = {
 export type ChatResponse = {
   resolution: Resolution;
   classification: Classification | null;
+  trace: AuditEntry[];
 };
 
 export type AuditEntry = {

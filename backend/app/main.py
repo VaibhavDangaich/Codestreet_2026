@@ -50,9 +50,13 @@ def reset():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
+    before = len(AUDIT.entries())
     state = run_agent(req.member_id, req.message, req.session_id)
+    trace = [e for e in AUDIT.entries()[before:]
+             if e["session_id"] == req.session_id]
     return ChatResponse(resolution=state["resolution"],
-                        classification=state.get("classification"))
+                        classification=state.get("classification"),
+                        trace=trace)
 
 
 @app.get("/member/{member_id}")

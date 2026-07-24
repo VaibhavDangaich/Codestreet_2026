@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AuditPanel from "./components/AuditPanel";
 import CasesPanel from "./components/CasesPanel";
 import GraphView from "./components/GraphView";
+import PipelineStrip from "./components/PipelineStrip";
 import {
   IconClose,
   IconExpand,
@@ -33,6 +34,7 @@ type Msg = {
   status?: ChatResponse["resolution"]["status"];
   classification?: ChatResponse["classification"];
   escalation?: string | null;
+  trace?: AuditEntry[];
 };
 
 type Tab = "cases" | "audit" | "graph";
@@ -164,6 +166,7 @@ export default function Home() {
           status: res.resolution.status,
           classification: res.classification,
           escalation: res.resolution.escalation_summary,
+          trace: res.trace,
         },
       ]);
       await refreshAudit();
@@ -411,6 +414,7 @@ export default function Home() {
                         {m.escalation}
                       </div>
                     )}
+                    {m.trace && <PipelineStrip trace={m.trace} />}
                   </div>
                 </div>
               ))}

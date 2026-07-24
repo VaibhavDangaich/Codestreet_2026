@@ -211,17 +211,18 @@ s.shapes.add_picture(str(_ui), Inches(0.85), Inches(2.05), width=Inches(7.5))
 # annotations
 text(s, 9.05, 2.15, 3.4, 0.4, [[R("What you’re seeing", 13, ACCENT2, True)]])
 anns = [
+    ("Visible decision pipeline per reply", "classified → verified → rule → executed", ACCENT2),
     ("Policy citation in every reply", "“auto-approved under FEE-AUTO v1.2”", ACCENT),
     ("Counterfactual on escalation", "“I can auto-approve up to $13,000 now”", GREEN),
     ("Escalation with full handoff context", "the specialist gets everything", AMBER),
     ("Durable cases + live audit / graph", "one screen, in real time", VIOLET),
 ]
-yy = 2.75
+yy = 2.62
 for head, sub, col in anns:
     box(s, 8.75, yy + 0.04, 0.12, 0.12, fill=col, radius=True)
-    text(s, 9.05, yy, 3.35, 0.7, [[R(head, 12, WHITE, True)], [R(sub, 10.5, MUTED)]])
-    yy += 0.92
-text(s, 9.05, 6.5, 3.4, 0.3, [[R("Live capture of the running app", 10, MUTED)]])
+    text(s, 9.05, yy, 3.35, 0.7, [[R(head, 11.5, WHITE, True)], [R(sub, 10, MUTED)]])
+    yy += 0.78
+text(s, 9.05, 6.6, 3.4, 0.3, [[R("Live capture of the running app", 10, MUTED)]])
 footer(s)
 
 # ========================= SLIDE 5 — HOW IT WORKS ==========================
@@ -323,10 +324,10 @@ cards3 = [
      "Versioned declarative rules decide; the LLM only proposes. Every decision "
      "cites the exact rule + version (e.g. LIMIT-CAP v1.1). Change policy = edit "
      "data + bump a version, no agent code."),
-    ("Self-verifying agent", VIOLET,
+    ("Self-verifying agentic loop", VIOLET,
      "A second reviewer LLM must agree the interpretation matches the request "
-     "before acting — a bounded propose → verify → revise loop; escalates if the "
-     "two agents can't agree. Risk-based, so it's spent where it matters."),
+     "before acting — a bounded propose → verify → revise loop that escalates "
+     "if the agents can't agree. Risk-based, so it's spent where it matters."),
     ("Counterfactual answers", GREEN,
      "On a denial we compute the nearest-approvable outcome ('I can do $15,600 "
      "now'), mapping to ECOA/CFPB adverse-action 'specific reasons'."),

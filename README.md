@@ -80,8 +80,10 @@ scripts/run_evals.sh       # accuracy, per-intent, first-contact resolution
 
 ## Demo script (~3 min)
 
-1. **Resolve** — "Please waive my $39 late fee." → resolved instantly; the audit
-   trail grows (classifier → policy → backend → agent).
+1. **Resolve** — "Please waive my $39 late fee." → resolved instantly. Every
+   reply shows its **decision pipeline** (classified → verified → policy rule →
+   executed), built from the turn's own audit entries, while the audit trail
+   grows on the right.
 2. **Escalate** — "Bump my limit to $50,000." (via chat) → policy gate → escalated
    with a full context summary.
 3. **Out-of-scope** — "Why is my statement so high?" → answered conversationally;

@@ -245,30 +245,40 @@ footer(s)
 
 # ========================= SLIDE 5 — HOW IT WORKS ==========================
 s = slide()
-header(s, "How it works", "One request → classify → policy → act — every step logged")
-y = 2.9
-chip(s, 0.9, y, 2.0, "Member request", MUTED)
-arrow(s, 3.0, y + 0.17)
-chip(s, 3.6, y, 2.35, "Intent classifier\n(confidence)", VIOLET)
-arrow(s, 6.05, y + 0.17)
-chip(s, 6.65, y, 2.0, "Policy gate", AMBER)
-arrow(s, 8.75, y + 0.17)
-chip(s, 9.35, y, 3.0, "Resolve & execute", GREEN)
+header(s, "How a request is decided",
+       "The LLM proposes — a versioned engine decides and cites the rule")
+y = 2.7
+stages = [
+    (0.85, 1.7, "Request", MUTED, ""),
+    (3.05, 2.0, "Classifier", VIOLET, "LLM proposes"),
+    (5.55, 2.5, "Policy-as-Code", ACCENT, "decides · cites rule"),
+    (8.55, 1.7, "Verify", VIOLET, "risk-based"),
+    (10.75, 1.65, "Execute", GREEN, ""),
+]
+for (x, w, label, col, cap) in stages:
+    chip(s, x, y, w, label, col)
+    if cap:
+        text(s, x, y + 0.66, w, 0.3, [[R(cap, 10, MUTED)]], align=PP_ALIGN.CENTER)
+for ax in (2.6, 5.1, 8.1, 10.3):
+    arrow(s, ax, y + 0.17, 0.4)
 # escalate branch
-chip(s, 9.35, y + 1.15, 3.0, "Escalate w/ full context", ROSE)
-a = s.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(7.35), Inches(y + 0.62),
-                       Inches(0.28), Inches(0.5))
+a = s.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(9.3), Inches(y + 0.95),
+                       Inches(0.28), Inches(0.45))
 a.fill.solid(); a.fill.fore_color.rgb = ROSE; a.line.fill.background(); a.shadow.inherit = False
-text(s, 6.5, y + 1.2, 2.7, 0.6, [[R("over cap /\nlow confidence", 11, ROSE, True)]],
-     align=PP_ALIGN.CENTER)
-# audit bar under everything
-box(s, 0.9, y + 2.15, 11.45, 0.75, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
-text(s, 1.15, y + 2.28, 11, 0.5, [[
-    R("⛓  Hash-chained audit trail  ", 15, ACCENT, True),
-    R("— classifier · policy · backend · agent : every decision sealed in order", 13, MUTED)]])
-text(s, 0.9, 6.55, 11, 0.4, [[
-    R("Confidence below threshold, or an amount over policy caps, routes to a human instead of a guess.",
-      12.5, MUTED)]])
+chip(s, 8.55, y + 1.5, 3.85, "Escalate — with counterfactual", ROSE)
+text(s, 4.5, y + 1.58, 3.8, 0.5,
+     [[R("over cap · low confidence · verifier disagrees", 10.5, ROSE, True)]],
+     align=PP_ALIGN.RIGHT)
+# audit bar
+box(s, 0.9, y + 2.55, 11.5, 0.72, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
+text(s, 1.15, y + 2.67, 11, 0.5, [[
+    R("⛓  Hash-chained audit trail   ", 14, ACCENT, True),
+    R("— every decision sealed in order, tagged with the rule that fired "
+      "(e.g. LIMIT-CAP v1.1)", 12.5, MUTED)]])
+text(s, 0.9, 6.55, 11.5, 0.4, [[
+    R("The model never has authority over money — a deterministic, versioned "
+      "rule engine decides and cites the exact rule; a second agent verifies "
+      "before anything executes.", 11.5, MUTED)]])
 footer(s)
 
 # ========================= SLIDE 5 — DIFF 1: AUDIT =========================
@@ -327,6 +337,35 @@ for i, (t, c) in enumerate([
     ("= rolled back · consistent", ACCENT),
 ]):
     text(s, 8.65, 3.1 + i * 0.5, 3.1, 0.5, [[R(t, 12.5, c, True)]])
+footer(s)
+
+# ========================= SLIDE 7b — DIFF 3: DECISIONING ==================
+s = slide()
+header(s, "Differentiator 3", "Trustworthy by construction — the LLM never decides",
+       ecolor=ACCENT2)
+cards3 = [
+    ("Policy-as-Code", ACCENT,
+     "Versioned declarative rules decide; the LLM only proposes. Every decision "
+     "cites the exact rule + version (e.g. LIMIT-CAP v1.1). Change policy = edit "
+     "data + bump a version, no agent code."),
+    ("Self-verifying agent", VIOLET,
+     "A second reviewer LLM must agree the interpretation matches the request "
+     "before acting — a bounded propose → verify → revise loop; escalates if the "
+     "two agents can't agree. Risk-based, so it's spent where it matters."),
+    ("Counterfactual answers", GREEN,
+     "On a denial we compute the nearest-approvable outcome ('I can do $15,600 "
+     "now'), mapping to ECOA/CFPB adverse-action 'specific reasons'."),
+    ("Decision provenance", AMBER,
+     "Rules become nodes in Neo4j — analysts query which rule approved or denied "
+     "across members, not just scroll a log."),
+]
+for i, (t, col, body) in enumerate(cards3):
+    cx = 0.9 + (i % 2) * 5.85
+    cy = 2.35 + (i // 2) * 2.15
+    box(s, cx, cy, 5.6, 1.95, fill=CARD, line=col, line_w=1.4, radius=True)
+    box(s, cx + 0.3, cy + 0.28, 0.5, 0.11, fill=col)
+    text(s, cx + 0.3, cy + 0.5, 5.0, 0.4, [[R(t, 16, WHITE, True)]])
+    text(s, cx + 0.3, cy + 1.0, 5.05, 0.9, [[R(body, 11.5, MUTED)]])
 footer(s)
 
 # ========================= SLIDE 7 — METRICS ==============================

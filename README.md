@@ -5,15 +5,22 @@ requests — **fee reversals, credit-limit increases, card replacements** — ke
 **tamper-evident hash-chained audit trail** of every decision, and **escalates to
 a human with full context** when policy limits are hit.
 
-Two differentiators beyond a basic servicing bot:
+Differentiators beyond a basic servicing bot:
 
-1. **Durable servicing cases (Temporal)** — high-stakes requests become durable
+1. **Trustworthy decisioning (the LLM never decides).** The LLM only *proposes*;
+   a **Policy-as-Code** engine of versioned declarative rules **decides** and cites
+   the exact rule (e.g. `LIMIT-CAP v1.1`). A **self-verifying agent** (risk-based,
+   bounded propose→verify→revise loop) must agree before acting. Denials return a
+   **counterfactual** ("I can auto-approve up to $X now"). Rules become nodes in
+   the audit graph (**decision provenance**).
+2. **Durable servicing cases (Temporal)** — high-stakes requests become durable
    workflows: a multi-step **saga with automatic compensation** (if a step fails,
    completed steps roll back — no partial financial state), a **durable
    human-in-the-loop** approval that waits on an underwriter (surviving restarts),
    and **live queryable status**.
-2. **Neo4j audit graph** — the audit trail is persisted to Neo4j Aura and rendered
-   as an analyst-friendly graph (Cytoscape) showing the full chain-of-custody.
+3. **Neo4j audit graph** — the audit trail is persisted to Neo4j Aura and rendered
+   as an analyst-friendly graph (Cytoscape) showing the full chain-of-custody,
+   including which policy rule fired on each decision.
 
 Out-of-scope messages are handled intelligently (answered, escalated with
 context, or clarified) — but the agent only ever *acts* on the three scoped
@@ -23,9 +30,10 @@ intents.
 
 ```
 Next.js UI ──HTTP──► FastAPI ──► LangGraph agent
-(chat · cases ·                   ├─ classifier (Gemini: few-shot + structured output + confidence)
- audit trail ·                    ├─ policy gates (auto-resolve vs escalate)
- audit graph)                     ├─ 3 resolution flows → mock card backend
+(chat · cases ·                   ├─ classifier (Gemini) — proposes intent + amounts
+ audit trail ·                    ├─ verifier (risk-based propose→verify→revise loop)
+ audit graph)                     ├─ Policy-as-Code engine — DECIDES + cites rule/version
+                                  ├─ 3 resolution flows → mock card backend (+ counterfactual)
                                   ├─ assistant (out-of-scope: answer / escalate / clarify)
                                   └─ hash-chained audit chain (SHA-256)
 

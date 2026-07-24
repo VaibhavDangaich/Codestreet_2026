@@ -78,24 +78,52 @@ export async function getMember(member_id: string) {
   return (await r.json()) as Member;
 }
 
-export type Alert = {
-  id: string;
-  member_id: string;
-  ts: string;
-  reason: string;
-  txn: { id: string; merchant: string; amount: number; city: string };
-  action: string;
+// --- Durable servicing cases (Temporal) ---
+export type CaseState = {
+  phase: string;
+  intent: string | null;
+  steps: string[];
+  completed: string[];
+  compensated: string[];
+  current: string | null;
+  failed: string | null;
+  final: string | null;
+  note: string | null;
 };
 
-export async function getAlerts(member_id?: string) {
-  const q = member_id ? `?member_id=${member_id}` : "";
-  const r = await fetch(`${BASE}/alerts${q}`);
-  return ((await r.json()).alerts ?? []) as Alert[];
+export type Case = {
+  case_id: string;
+  member_id: string;
+  intent: string;
+  requires_approval: boolean;
+  force_fail?: boolean;
+  state: CaseState | null;
+};
+
+export async function startCase(
+  member_id: string,
+  intent: string,
+  params: Record<string, unknown> = {},
+  force_fail = false
+) {
+  const r = await fetch(`${BASE}/cases/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ member_id, intent, params, force_fail }),
+  });
+  return (await r.json()) as { case_id?: string; requires_approval?: boolean; error?: string };
 }
 
-export async function simulateSuspicious(member_id: string) {
-  const r = await fetch(`${BASE}/simulate/suspicious/${member_id}`, {
+export async function caseDecision(case_id: string, approved: boolean, note = "") {
+  const r = await fetch(`${BASE}/cases/${case_id}/decision`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approved, note }),
   });
-  return (await r.json()) as { injected?: Record<string, unknown> };
+  return (await r.json()) as { ok?: boolean };
+}
+
+export async function listCases() {
+  const r = await fetch(`${BASE}/cases`);
+  return ((await r.json()).cases ?? []) as Case[];
 }

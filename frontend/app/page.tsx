@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AuditPanel from "./components/AuditPanel";
+import CasesPanel from "./components/CasesPanel";
 import {
-  Alert,
   AuditEntry,
+  Case,
   ChatResponse,
   Member,
   Verify,
-  getAlerts,
   getAudit,
   getMember,
+  listCases,
   sendChat,
-  simulateSuspicious,
+  startCase,
   tamperAudit,
   verifyAudit,
 } from "./lib/api";
@@ -42,6 +43,7 @@ const STATUS_BADGE: Record<string, string> = {
   escalated: "border-amber-500/40 bg-amber-500/15 text-amber-300",
   needs_info: "border-sky-500/40 bg-sky-500/15 text-sky-300",
   rejected: "border-rose-500/40 bg-rose-500/15 text-rose-300",
+  answered: "border-violet-500/40 bg-violet-500/15 text-violet-300",
 };
 
 export default function Home() {
@@ -53,8 +55,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [verify, setVerify] = useState<Verify | null>(null);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [cases, setCases] = useState<Case[]>([]);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,9 +83,9 @@ export default function Home() {
     }
   }, []);
 
-  const refreshAlerts = useCallback(async () => {
+  const refreshCases = useCallback(async () => {
     try {
-      setAlerts(await getAlerts());
+      setCases(await listCases());
     } catch {
       /* ignore */
     }
@@ -95,24 +96,26 @@ export default function Home() {
     refreshMember(memberId);
   }, [refreshAudit, refreshMember, memberId]);
 
-  // Poll for autonomous activity so the "sleeping agent" acting shows up live,
-  // even when the member isn't chatting. This is the Temporal watcher surfacing.
+  // Poll so durable cases advance live in the UI (Temporal workflow progressing),
+  // and autonomous audit entries surface even without chatting.
   useEffect(() => {
-    refreshAlerts();
+    refreshCases();
     const t = setInterval(() => {
-      refreshAlerts();
+      refreshCases();
       refreshAudit();
       refreshMember(memberId);
-    }, 4000);
+    }, 2000);
     return () => clearInterval(t);
-  }, [refreshAlerts, refreshAudit, refreshMember, memberId]);
+  }, [refreshCases, refreshAudit, refreshMember, memberId]);
 
-  async function onSimulate() {
-    await simulateSuspicious(memberId);
-    // the Temporal watcher will catch it on its next scan (~10s); poll picks it up
+  async function launchCase(
+    intent: string,
+    params: Record<string, unknown>,
+    force_fail = false
+  ) {
+    await startCase(memberId, intent, params, force_fail);
+    refreshCases();
   }
-
-  const activeAlerts = alerts.filter((a) => !dismissed.has(a.id));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 9e9, behavior: "smooth" });
@@ -196,11 +199,25 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={onSimulate}
-              title="Demo: simulate an unusual charge — the autonomous monitor will catch it"
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-500/20"
+              onClick={() => launchCase("card_replacement", { fee: 0 })}
+              title="Durable saga: block old card → charge → order → notify"
+              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/20"
             >
-              ⚡ Simulate suspicious charge
+              Replace card
+            </button>
+            <button
+              onClick={() => launchCase("card_replacement", {}, true)}
+              title="Force the fulfillment step to fail — watch the saga auto-roll-back"
+              className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20"
+            >
+              Replace ✕ fail → rollback
+            </button>
+            <button
+              onClick={() => launchCase("limit_increase", { new_limit: 50000 })}
+              title="Over-policy → durably waits for underwriter approval"
+              className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:bg-sky-500/20"
+            >
+              $50k limit → approval
             </button>
             <select
               value={memberId}
@@ -220,42 +237,10 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Autonomous alert banner — the 'sleeping agent' surfacing without any chat */}
-      {activeAlerts.length > 0 && (
-        <div className="mx-auto max-w-7xl px-6 pt-4">
-          {activeAlerts.slice(0, 2).map((a) => (
-            <div
-              key={a.id}
-              className="mb-2 flex items-start justify-between gap-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3"
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-lg">🛡️</span>
-                <div className="text-sm">
-                  <p className="font-semibold text-rose-200">
-                    Autonomous fraud action · {a.member_id}
-                  </p>
-                  <p className="text-rose-100/80">
-                    Detected {a.reason} at{" "}
-                    <span className="font-medium">{a.txn.merchant}</span>. {a.action}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-rose-200/50">
-                    Acted on by the Temporal monitor — no human trigger. Logged to
-                    the audit trail →
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() =>
-                  setDismissed((d) => new Set(d).add(a.id))
-                }
-                className="text-xs text-rose-200/60 hover:text-rose-100"
-              >
-                dismiss
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Durable servicing cases — the Temporal showcase */}
+      <div className="mx-auto max-w-7xl px-6 pt-4">
+        <CasesPanel cases={cases} onChanged={refreshCases} />
+      </div>
 
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-2">
         {/* LEFT: chat + member */}

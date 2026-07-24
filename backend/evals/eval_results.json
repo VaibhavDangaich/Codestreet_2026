@@ -1,0 +1,39 @@
+{
+  "provider": "none",
+  "classification": {
+    "overall_accuracy": 0.9,
+    "n": 20,
+    "per_intent_accuracy": {
+      "fee_reversal": 1.0,
+      "limit_increase": 1.0,
+      "card_replacement": 0.6,
+      "unknown": 1.0
+    },
+    "mean_conf_correct": 0.625,
+    "mean_conf_wrong": 0.3,
+    "confusion": {
+      "fee_reversal": {
+        "fee_reversal": 5
+      },
+      "limit_increase": {
+        "limit_increase": 5
+      },
+      "card_replacement": {
+        "card_replacement": 3,
+        "unknown": 2
+      },
+      "unknown": {
+        "unknown": 5
+      }
+    }
+  },
+  "resolution": {
+    "first_contact_resolution_rate": 0.6,
+    "n_in_scope": 15,
+    "outcome_breakdown": {
+      "resolved": 9,
+      "rejected": 4,
+      "needs_info": 2
+    }
+  }
+}

@@ -1,0 +1,22 @@
+[
+  {"message": "Can you waive the $39 late fee? I paid one day late.", "intent": "fee_reversal"},
+  {"message": "Please reverse the annual fee on my card.", "intent": "fee_reversal"},
+  {"message": "I was charged a late charge I don't think is fair, can you refund it?", "intent": "fee_reversal"},
+  {"message": "Remove the $25 late fee please, my payment was just a day off.", "intent": "fee_reversal"},
+  {"message": "There's a fee on my statement I'd like waived.", "intent": "fee_reversal"},
+  {"message": "I've been loyal for years, can I get a higher limit?", "intent": "limit_increase"},
+  {"message": "I'd like to raise my credit limit to $20,000.", "intent": "limit_increase"},
+  {"message": "Can you increase my credit line? I got a raise at work.", "intent": "limit_increase"},
+  {"message": "My spending limit is too low, please bump it up.", "intent": "limit_increase"},
+  {"message": "I want a bigger credit limit for an upcoming trip.", "intent": "limit_increase"},
+  {"message": "I lost my card at the airport, I need a new one asap.", "intent": "card_replacement"},
+  {"message": "My card was stolen, please send a replacement.", "intent": "card_replacement"},
+  {"message": "My card is damaged and won't swipe, can I get a new one?", "intent": "card_replacement"},
+  {"message": "I never received my card in the mail, send another.", "intent": "card_replacement"},
+  {"message": "Someone took my wallet with my Amex, I need a fresh card.", "intent": "card_replacement"},
+  {"message": "Why is my statement so high this month?", "intent": "unknown"},
+  {"message": "What's my current balance?", "intent": "unknown"},
+  {"message": "How do I add an authorized user?", "intent": "unknown"},
+  {"message": "Can you tell me my reward points?", "intent": "unknown"},
+  {"message": "I want to close my account.", "intent": "unknown"}
+]

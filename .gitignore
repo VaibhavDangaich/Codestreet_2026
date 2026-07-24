@@ -1,0 +1,14 @@
+# secrets
+**/.env
+!**/.env.example
+
+# python
+backend/.venv/
+__pycache__/
+*.pyc
+
+# node / next
+node_modules/
+frontend/.next/
+frontend/out/
+.DS_Store

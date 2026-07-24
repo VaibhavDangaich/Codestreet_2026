@@ -46,8 +46,13 @@ export default function GraphView() {
               color: "#334155",
               "font-size": 9,
               "font-weight": 500,
-              "text-valign": "bottom",
-              "text-margin-y": 4,
+              // entries read like log lines beside the spine; other nodes label below
+              "text-valign": (n: any) =>
+                n.data("type") === "entry" ? "center" : "bottom",
+              "text-halign": (n: any) =>
+                n.data("type") === "entry" ? "right" : "center",
+              "text-margin-x": (n: any) => (n.data("type") === "entry" ? 6 : 0),
+              "text-margin-y": (n: any) => (n.data("type") === "entry" ? 0 : 4),
               width: (n: any) => (n.data("type") === "entry" ? 18 : 28),
               height: (n: any) => (n.data("type") === "entry" ? 18 : 28),
               "border-width": 3,
@@ -58,12 +63,17 @@ export default function GraphView() {
             selector: "edge",
             style: {
               width: 1,
-              "line-color": "#CBD5E1",
-              "target-arrow-color": "#94A3B8",
+              "line-color": "#DBE3EE",
+              "target-arrow-color": "#B6C2D4",
               "target-arrow-shape": "triangle",
-              "arrow-scale": 0.7,
-              "curve-style": "bezier",
-              label: "data(label)",
+              "arrow-scale": 0.6,
+              "curve-style": "straight",
+              // only the analytically meaningful labels; column position
+              // already tells you IN / ON / PERFORMED_BY
+              label: (e: any) =>
+                ["NEXT", "APPLIED_RULE"].includes(e.data("label"))
+                  ? e.data("label")
+                  : "",
               "font-size": 7,
               color: "#94A3B8",
               "text-rotation": "autorotate",
@@ -77,8 +87,18 @@ export default function GraphView() {
               "target-arrow-color": "#2563EB",
             },
           },
+          {
+            selector: 'edge[label = "APPLIED_RULE"]',
+            style: {
+              width: 1.8,
+              "line-color": "#DB2777",
+              "target-arrow-color": "#DB2777",
+              "line-style": "dashed",
+              color: "#DB2777",
+            },
+          },
         ],
-        layout: { name: "grid" },
+        layout: { name: "preset" },
       });
       refresh(true);
       timer = setInterval(() => refresh(false), 4000);
@@ -94,14 +114,63 @@ export default function GraphView() {
         countRef.current = total;
         const cy = cyRef.current;
         cy.elements().remove();
-        cy.add([...g.nodes, ...g.edges]);
-        cy.layout({
-          name: "cose",
-          animate: false,
-          nodeRepulsion: 6000,
-          idealEdgeLength: 70,
-          padding: 30,
-        }).run();
+
+        // --- timeline layout: entries top->bottom in seq order (the spine),
+        // supporting nodes in columns, aligned to the entries they touch ---
+        const seqOf = (id: string) => parseInt(id.split(":")[1] ?? "0", 10);
+        const entryIds = g.nodes
+          .filter((n) => n.data.type === "entry")
+          .map((n) => n.data.id)
+          .sort((a, b) => seqOf(a) - seqOf(b));
+        const pos: Record<string, { x: number; y: number }> = {};
+        entryIds.forEach((id, i) => (pos[id] = { x: 0, y: i * 90 }));
+
+        // column x per supporting type
+        const colX: Record<string, number> = {
+          actor: -320,
+          session: -520,
+          member: -700,
+          rule: 340,
+        };
+        // avg y of the entries each supporting node connects to
+        const touch: Record<string, number[]> = {};
+        for (const e of g.edges) {
+          const { source, target } = e.data;
+          const [ent, other] =
+            source.startsWith("entry:") && !target.startsWith("entry:")
+              ? [source, target]
+              : target.startsWith("entry:") && !source.startsWith("entry:")
+              ? [target, source]
+              : [null, null];
+          if (ent && other && pos[ent]) {
+            (touch[other] ??= []).push(pos[ent].y);
+          }
+        }
+        // place each column, avoiding overlaps within it
+        for (const type of Object.keys(colX)) {
+          const nodes = g.nodes
+            .filter((n) => n.data.type === type)
+            .map((n) => ({
+              id: n.data.id,
+              y: touch[n.data.id]?.length
+                ? touch[n.data.id].reduce((a, b) => a + b, 0) /
+                  touch[n.data.id].length
+                : 0,
+            }))
+            .sort((a, b) => a.y - b.y);
+          let prev = -Infinity;
+          for (const n of nodes) {
+            const y = Math.max(n.y, prev + 70);
+            pos[n.id] = { x: colX[type], y };
+            prev = y;
+          }
+        }
+
+        cy.add([
+          ...g.nodes.map((n) => ({ ...n, position: pos[n.data.id] })),
+          ...g.edges,
+        ]);
+        cy.layout({ name: "preset", animate: false }).run();
         cy.fit(undefined, 30);
       } catch (e: any) {
         setError(String(e?.message ?? e));

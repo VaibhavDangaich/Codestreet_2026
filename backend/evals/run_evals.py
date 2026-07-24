@@ -71,6 +71,7 @@ def resolution_metrics(cases):
 
     in_scope = [c for c in cases if c["intent"] in SUPPORTED]
     resolved = handled = violations = 0
+    escalations = complete_handoffs = 0
     outcomes = defaultdict(int)
     for i, c in enumerate(in_scope):
         cards.reset_seed()                       # isolate each case
@@ -86,9 +87,19 @@ def resolution_metrics(cases):
                     violations += 1
         if res.status in ("resolved", "escalated"):
             handled += 1                          # auto-resolved OR safely escalated
+        if res.status == "escalated":
+            # Handoff quality (named in the brief): the human must receive a
+            # complete package — summary, reason, and the member-visible context.
+            escalations += 1
+            d = res.details or {}
+            if res.escalation_summary and d.get("reason") and len(d) >= 2:
+                complete_handoffs += 1
     return {
         "first_contact_resolution_rate": round(resolved / len(in_scope), 3),
         "correct_handling_rate": round(handled / len(in_scope), 3),
+        "handoff_completeness": (round(complete_handoffs / escalations, 3)
+                                 if escalations else None),
+        "n_escalations": escalations,
         "policy_violations": violations,
         "audit_integrity_intact": AUDIT.verify().get("intact", False),
         "n_in_scope": len(in_scope),
@@ -112,6 +123,10 @@ def main():
           f"  (n={rm['n_in_scope']} in-scope)")
     print(f"Correct handling rate    : {rm['correct_handling_rate']*100:.1f}%"
           f"  (resolved or safely escalated)")
+    hc = rm["handoff_completeness"]
+    print(f"Handoff completeness     : "
+          f"{'n/a' if hc is None else f'{hc*100:.0f}%'}"
+          f"  (n={rm['n_escalations']} escalations)")
     print(f"Policy violations        : {rm['policy_violations']}")
     print(f"Audit integrity intact   : {rm['audit_integrity_intact']}")
     print(f"Outcome breakdown        : {rm['outcome_breakdown']}")

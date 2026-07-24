@@ -30,6 +30,8 @@
   "resolution": {
     "first_contact_resolution_rate": 0.8,
     "correct_handling_rate": 0.867,
+    "handoff_completeness": 1.0,
+    "n_escalations": 1,
     "policy_violations": 0,
     "audit_integrity_intact": true,
     "n_in_scope": 15,

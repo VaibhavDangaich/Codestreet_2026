@@ -149,6 +149,10 @@ text(s, 0.9, 5.45, 11, 0.5,
 text(s, 0.9, 5.95, 11, 0.5,
      [[R("Team:  ", 14, MUTED), R("<your team name>", 14, WHITE, True),
        R("      Members:  ", 14, MUTED), R("<names>", 14, WHITE, True)]])
+text(s, 0.9, 6.45, 11, 0.5,
+     [[R("Demo video:  ", 14, MUTED), R("<link>", 14, ACCENT, True),
+       R("      Repo:  ", 14, MUTED),
+       R("github.com/VaibhavDangaich/Codestreet_2026", 14, ACCENT, True)]])
 
 # ========================= SLIDE 2 — PROBLEM ===============================
 s = slide()
@@ -260,7 +264,7 @@ footer(s)
 
 # ========================= SLIDE 5 — DIFF 1: AUDIT =========================
 s = slide()
-header(s, "Differentiator 1", "Tamper-evident audit trail — trust by architecture", ecolor=ACCENT)
+header(s, "Differentiator 1", "A verifiable, tamper-evident audit trail", ecolor=ACCENT)
 bullets(s, 0.9, 2.3, 7.1, [
     ("Every decision, policy check & backend call is hash-chained (SHA-256)",
      "— each entry seals the one before it."),
@@ -346,6 +350,7 @@ rows = [
     ("Intent classification accuracy", "90%  (n=20)", "labeled eval set · LLM target ≥95%", GREEN),
     ("First-contact resolution", "80%  (12/15)", "multi-turn outcome check", GREEN),
     ("Correct handling (resolve / safe-escalate)", "86.7%", "outcome check, in-scope", GREEN),
+    ("Escalation handoff completeness", "100%", "summary + reason + context present", GREEN),
     ("Policy violations", "0", "engine caps enforced + verified", ACCENT),
     ("Audit integrity", "100% intact", "hash-chain verification", ACCENT),
 ]
@@ -359,13 +364,13 @@ for i, (m, res, how, col) in enumerate(rows):
     fill = CARD if i % 2 == 0 else BG
     box(s, 0.9, yy, 11.5, 0.62, fill=fill)
     text(s, 1.1, yy + 0.13, 5.2, 0.4, [[R(m, 13.5, WHITE, True)]])
-    text(s, 6.4, yy + 0.13, 3, 0.4, [[R(res, 13.5, col, True)]])
-    text(s, 9.4, yy + 0.13, 3, 0.4, [[R(how, 12.5, MUTED)]])
-    yy += 0.62
-text(s, 0.9, yy + 0.2, 11.5, 0.9, [[
-    R("We report TRUE resolution + escalation rate — not just deflection. ", 13, WHITE, True),
-    R("Financial-services deflection is realistically 25–45%; finance teams target <1% error, "
-      "because one wrong answer is a compliance event.", 13, MUTED)]])
+    text(s, 6.4, yy + 0.11, 3, 0.4, [[R(res, 13, col, True)]])
+    text(s, 9.4, yy + 0.11, 3, 0.4, [[R(how, 12, MUTED)]])
+    yy += 0.56
+text(s, 0.9, yy + 0.18, 11.5, 0.6, [[
+    R("We report TRUE resolution + handoff quality — not just deflection ", 12.5, WHITE, True),
+    R("(financial-services deflection is realistically 25–45%; one wrong answer is a "
+      "compliance event, so the target error rate is <1%).", 12.5, MUTED)]])
 footer(s)
 
 # ========================= SLIDE 8 — WHY AMEX ==============================

@@ -241,31 +241,32 @@ for i, (lbl, col) in enumerate([("#0 request", VIOLET), ("#1 policy", AMBER),
         a.shadow.inherit = False
 footer(s, 5)
 
-# ========================= SLIDE 6 — DIFF 2: GUARDIAN ======================
+# ========================= SLIDE 6 — DIFF 2: DURABLE CASES =================
 s = slide()
-header(s, "Differentiator 2 · beyond the brief", "A guardian agent that acts while you sleep",
-       ecolor=ROSE)
-bullets(s, 0.9, 2.4, 7.1, [
-    ("A durable Temporal workflow continuously watches for unusual activity",
-     "— the agent is idle until something happens."),
-    ("On an anomaly (e.g. high-value card-not-present charge) it acts autonomously",
-     "— freezes the card, alerts the member, logs everything."),
-    ("Oversight at scale: humans handle exceptions, not every step",
-     "— the resolution to the bank’s autonomy dilemma."),
-    ("Temporal’s durable event history is itself proof",
-     "of when the agent woke and what it did."),
+header(s, "Differentiator 2 · beyond the brief",
+       "Servicing cases that can’t be left half-done", ecolor=VIOLET)
+bullets(s, 0.9, 2.35, 7.1, [
+    ("Every high-stakes request becomes a durable Temporal workflow",
+     "— it survives crashes and resumes exactly where it stopped."),
+    ("Saga with automatic compensation",
+     "— if a step fails, completed steps roll back in reverse. Never partial."),
+    ("Durable human-in-the-loop approval",
+     "— over-policy cases wait on an underwriter for as long as it takes."),
+    ("Live status + replayable event history",
+     "— queryable in real time; the log is itself an audit."),
 ], gap=0.92, size=15.5)
-# right visual
-box(s, 8.4, 2.5, 3.6, 3.55, fill=CARD, line=ROSE, line_w=1.5, radius=True)
-text(s, 8.65, 2.7, 3.1, 0.5, [[R("Autonomous action", 14, ROSE, True)]])
+# right visual — a saga that fails and compensates
+box(s, 8.4, 2.4, 3.6, 3.75, fill=CARD, line=VIOLET, line_w=1.5, radius=True)
+text(s, 8.65, 2.6, 3.1, 0.5, [[R("Card replacement saga", 13, VIOLET, True)]])
 for i, (t, c) in enumerate([
-    ("⚡ $4,999 charge · Lagos (CNP)", MUTED),
-    ("🛡️ anomaly_detected", ROSE),
-    ("🔒 auto_freeze_card", AMBER),
-    ("🔔 alert_raised → member", GREEN),
-    ("⛓ written to audit chain", ACCENT),
+    ("✓ block old card", GREEN),
+    ("✓ charge fee", GREEN),
+    ("✗ order fulfillment — fails", ROSE),
+    ("↩ refund fee (compensate)", AMBER),
+    ("↩ unblock card (compensate)", AMBER),
+    ("= rolled back · consistent", ACCENT),
 ]):
-    text(s, 8.65, 3.2 + i * 0.55, 3.1, 0.5, [[R(t, 13, c, True)]])
+    text(s, 8.65, 3.1 + i * 0.5, 3.1, 0.5, [[R(t, 12.5, c, True)]])
 footer(s, 6)
 
 # ========================= SLIDE 7 — METRICS ==============================
@@ -305,7 +306,7 @@ bullets(s, 0.9, 2.4, 11.4, [
      "This is exactly that, applied to servicing."),
     ("~80% of financial institutions lack mature agentic-AI governance,",
      "yet most expect heavy agent use by 2027 (Deloitte)."),
-    ("Our audit trail + guardian monitor are the prerequisites for safe autonomy —",
+    ("Our audit trail + durable compensating workflows are the prerequisites for safe autonomy —",
      "‘human oversight’ and ‘responsible use’ built in, not bolted on."),
 ], gap=0.92, size=16.5)
 c = box(s, 0.9, 5.5, 11.5, 1.05, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
@@ -323,17 +324,23 @@ arrow(s, 3.2, 2.72)
 chip(s, 3.8, 2.55, 2.0, "FastAPI", ACCENT)
 arrow(s, 5.9, 2.72)
 chip(s, 6.5, 2.55, 5.9, "LangGraph agent: classifier · policy · flows · audit", VIOLET)
-# row 2: autonomous path
-chip(s, 0.9, 3.85, 2.9, "Temporal dev server", ROSE)
-arrow(s, 3.9, 4.02)
-chip(s, 4.5, 3.85, 1.9, "Worker", ROSE)
-arrow(s, 6.5, 4.02)
-chip(s, 7.1, 3.85, 5.3, "Monitor workflow → /monitor/tick (detect · freeze · alert)", ROSE)
+# row 2: durable case path
+chip(s, 0.9, 3.85, 2.6, "Temporal server", VIOLET)
+arrow(s, 3.6, 4.02)
+chip(s, 4.2, 3.85, 1.7, "Worker", VIOLET)
+arrow(s, 6.0, 4.02)
+chip(s, 6.6, 3.85, 5.8, "ServicingCaseWorkflow → saga · compensation · approval", VIOLET)
+# row 3: audit graph
+chip(s, 0.9, 4.55, 3.4, "Audit chain → /graph", ACCENT)
+arrow(s, 4.4, 4.72)
+chip(s, 5.0, 4.55, 3.0, "Neo4j Aura", GREEN)
+arrow(s, 8.1, 4.72)
+chip(s, 8.7, 4.55, 3.7, "Cytoscape analyst graph", GREEN)
 # stack line
-box(s, 0.9, 5.1, 11.5, 1.0, fill=CARD, radius=True)
-text(s, 1.2, 5.25, 11, 0.8, [[R("Stack   ", 14, ACCENT, True),
-    R("Python · FastAPI · LangChain/LangGraph · Gemini (model-agnostic) · Temporal · Next.js · SHA-256 hash-chain",
-      13.5, WHITE)]])
+box(s, 0.9, 5.35, 11.5, 0.95, fill=CARD, radius=True)
+text(s, 1.2, 5.48, 11, 0.8, [[R("Stack   ", 13, ACCENT, True),
+    R("Python · FastAPI · LangGraph · Gemini · Temporal · Neo4j · Next.js · Cytoscape · SHA-256 hash-chain",
+      12.5, WHITE)]])
 text(s, 1.2, 5.72, 11, 0.4, [[
     R("Core-banking is mocked today; each call swaps to a real Amex API with no change to the agent logic.",
       12.5, MUTED)]])

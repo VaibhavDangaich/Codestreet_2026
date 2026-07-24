@@ -280,9 +280,9 @@ bullets(s, 0.9, 2.3, 7.1, [
 # real Neo4j audit graph (live capture) — rules are nodes, linked APPLIED_RULE
 _g = Path(__file__).resolve().parent / "diagrams" / "ui_graph_panel.png"
 box(s, 8.35, 2.3, 4.1, 4.35, fill=LIGHT, line=ACCENT, line_w=1.0, radius=True)
-s.shapes.add_picture(str(_g), Inches(8.9), Inches(2.45), height=Inches(3.95))
+s.shapes.add_picture(str(_g), Inches(8.48), Inches(2.44), width=Inches(3.85))
 text(s, 8.35, 6.44, 4.1, 0.3,
-     [[R("Live Neo4j graph — policy rules are nodes (APPLIED_RULE)",
+     [[R("Live Neo4j graph — the sequence spine, rules linked APPLIED_RULE",
          9, MUTED)]], align=PP_ALIGN.CENTER)
 footer(s)
 

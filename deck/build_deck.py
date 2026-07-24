@@ -1,7 +1,8 @@
 """Generate the CodeStreet 2026 screening-round pitch deck (.pptx).
 
-~10 self-standing slides tuned for Amex Round-1 judging (business impact +
-feasibility + 'why Amex'). Run:  uv run python deck/build_deck.py
+11 self-standing slides (light Amex-branded theme) tuned for Round-1 judging:
+Problem -> HLD -> UI mockup -> LLD/stack -> 'why Amex'. The winners' formula.
+Run:  uv run python deck/build_deck.py
 Output: deck/CodeStreet2026_Servicing_Agent.pptx
 """
 from __future__ import annotations
@@ -15,16 +16,18 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
 # --- palette ---------------------------------------------------------------
-BG = RGBColor(0x0B, 0x10, 0x20)        # deep navy
-CARD = RGBColor(0x14, 0x1C, 0x30)
-ACCENT = RGBColor(0x2E, 0x8B, 0xF0)    # Amex-ish blue
-ACCENT2 = RGBColor(0x00, 0x6F, 0xCF)
-WHITE = RGBColor(0xF5, 0xF7, 0xFA)
-MUTED = RGBColor(0x93, 0xA0, 0xB4)
-GREEN = RGBColor(0x3F, 0xD0, 0x8A)
-AMBER = RGBColor(0xF2, 0xB0, 0x4B)
-ROSE = RGBColor(0xF2, 0x6D, 0x6D)
-VIOLET = RGBColor(0xA6, 0x8B, 0xF0)
+# Light theme on Amex's official palette (Amex Blue #016FD0, Deep Blue #002663)
+BG = RGBColor(0xF6, 0xF9, 0xFD)        # light cool background
+CARD = RGBColor(0xE9, 0xF0, 0xF9)      # light card fill
+ACCENT = RGBColor(0x01, 0x6F, 0xD0)    # Amex Blue (official)
+ACCENT2 = RGBColor(0x00, 0x26, 0x63)   # Amex Deep Blue
+WHITE = RGBColor(0x0F, 0x17, 0x2A)     # primary TEXT (dark); name kept for reuse
+MUTED = RGBColor(0x5B, 0x66, 0x73)     # secondary text
+LIGHT = RGBColor(0xFF, 0xFF, 0xFF)     # text on dark/colored fills
+GREEN = RGBColor(0x05, 0x96, 0x69)
+AMBER = RGBColor(0xB4, 0x53, 0x09)
+ROSE = RGBColor(0xC0, 0x36, 0x2C)
+VIOLET = RGBColor(0x6D, 0x4F, 0xC4)
 
 FONT = "Calibri"
 FONT_H = "Calibri"
@@ -89,10 +92,16 @@ def header(s, eyebrow, title, ecolor=ACCENT):
     text(s, 0.82, 0.92, 11.6, 1.2, [[R(title, 32, WHITE, True, FONT_H)]])
 
 
-def footer(s, n):
+_page = 2  # title slide has no footer; page numbers auto-increment from slide 2
+
+
+def footer(s, n=None):
+    global _page
+    n = _page if n is None else n
     text(s, 0.85, 7.02, 8, 0.3,
          [[R("End-to-End Servicing Agent · CodeStreet 2026", 9, MUTED)]])
     text(s, 12.0, 7.02, 0.9, 0.3, [[R(f"{n:02d}", 9, MUTED)]], align=PP_ALIGN.RIGHT)
+    _page += 1
 
 
 def bullets(s, x, y, w, items, gap=0.66, size=15, dotc=ACCENT):
@@ -160,7 +169,7 @@ text(s, 4.7, 5.5, 4, 0.8,
 text(s, 8.0, 5.62, 4.2, 0.9,
      [[R("The opportunity: ", 14, WHITE, True),
        R("resolve the routine autonomously — safely — and free humans for the hard cases.", 14, MUTED)]])
-footer(s, 2)
+footer(s)
 
 # ========================= SLIDE 3 — SOLUTION ==============================
 s = slide()
@@ -187,9 +196,54 @@ text(s, 0.9, 6.35, 11.5, 0.4, [[
     R("Plus  ", 12.5, ACCENT, True),
     R("multi-turn follow-ups (slot-filling) · voice input · safe out-of-scope handling "
       "(answer / escalate / clarify)", 12.5, MUTED)]], align=PP_ALIGN.CENTER)
-footer(s, 3)
+footer(s)
 
-# ========================= SLIDE 4 — HOW IT WORKS ==========================
+# ========================= SLIDE 4 — PRODUCT / UI =========================
+s = slide()
+header(s, "The product", "One console — chat, durable cases & the audit trail")
+# app window frame
+box(s, 0.9, 2.15, 11.5, 4.05, fill=LIGHT, line=ACCENT, line_w=1.25, radius=True)
+box(s, 1.15, 2.32, 11.0, 0.5, fill=CARD, radius=True)
+text(s, 1.35, 2.42, 5, 0.35, [[R("End-to-End Servicing Agent", 11, ACCENT2, True)]])
+text(s, 6.6, 2.44, 5.35, 0.35,
+     [[R("New card · Card→rollback · $50k limit          Priya Sharma ▾", 9.5, MUTED)]],
+     align=PP_ALIGN.RIGHT)
+# left — conversation
+box(s, 1.15, 2.98, 6.5, 3.08, fill=CARD, radius=True)
+text(s, 1.4, 3.1, 4, 0.3, [[R("Conversation", 10, ACCENT2, True)]])
+box(s, 4.15, 3.5, 3.2, 0.45, fill=ACCENT, radius=True)
+text(s, 4.3, 3.59, 2.9, 0.3, [[R("Please waive my $39 late fee", 9.5, LIGHT)]])
+box(s, 1.45, 4.15, 4.8, 0.8, fill=LIGHT, line=CARD, line_w=1.0, radius=True)
+text(s, 1.6, 4.24, 4.5, 0.65,
+     [[R("resolved   ", 8.5, GREEN, True), R("fee_reversal · 96%", 8.5, MUTED)],
+      [R("Done — I’ve reversed the $39 late fee.", 9.5, WHITE)]])
+text(s, 1.45, 5.55, 6, 0.4,
+     [[R("Priya Sharma · limit $10,000 · standing Good · open fees 0", 9, MUTED)]])
+# right — dock (tabs + case)
+box(s, 7.85, 2.98, 4.45, 3.08, fill=CARD, radius=True)
+box(s, 8.05, 3.1, 1.3, 0.36, fill=ACCENT, radius=True)
+text(s, 8.05, 3.18, 1.3, 0.28, [[R("Cases", 9, LIGHT, True)]], align=PP_ALIGN.CENTER)
+box(s, 9.45, 3.1, 1.3, 0.36, fill=LIGHT, radius=True)
+text(s, 9.45, 3.18, 1.3, 0.28, [[R("Audit", 9, MUTED, True)]], align=PP_ALIGN.CENTER)
+box(s, 10.85, 3.1, 1.3, 0.36, fill=LIGHT, radius=True)
+text(s, 10.85, 3.18, 1.3, 0.28, [[R("Graph", 9, MUTED, True)]], align=PP_ALIGN.CENTER)
+box(s, 8.05, 3.6, 4.05, 2.34, fill=LIGHT, line=CARD, line_w=1.0, radius=True)
+text(s, 8.25, 3.72, 2.8, 0.3, [[R("Card replacement · M-1001", 9, WHITE, True)]])
+box(s, 11.1, 3.72, 0.85, 0.28, fill=AMBER, radius=True)
+text(s, 11.1, 3.76, 0.85, 0.24, [[R("rolled back", 7.5, LIGHT, True)]], align=PP_ALIGN.CENTER)
+for i, (t, c) in enumerate([
+    ("● block old card    ↩ compensated", AMBER),
+    ("● charge fee    ↩ compensated", AMBER),
+    ("✗ order new card — fails", ROSE),
+    ("○ notify member", MUTED),
+]):
+    text(s, 8.3, 4.18 + i * 0.4, 3.7, 0.3, [[R(t, 9, c, True)]])
+text(s, 0.9, 6.35, 11.5, 0.4, [[
+    R("Members chat · underwriters approve in-line · analysts inspect the audit "
+      "trail and Neo4j graph — one screen.", 12, MUTED)]], align=PP_ALIGN.CENTER)
+footer(s)
+
+# ========================= SLIDE 5 — HOW IT WORKS ==========================
 s = slide()
 header(s, "How it works", "One request → classify → policy → act — every step logged")
 y = 2.9
@@ -215,7 +269,7 @@ text(s, 1.15, y + 2.28, 11, 0.5, [[
 text(s, 0.9, 6.55, 11, 0.4, [[
     R("Confidence below threshold, or an amount over policy caps, routes to a human instead of a guess.",
       12.5, MUTED)]])
-footer(s, 4)
+footer(s)
 
 # ========================= SLIDE 5 — DIFF 1: AUDIT =========================
 s = slide()
@@ -245,7 +299,7 @@ for i, (lbl, col) in enumerate([("#0 request", VIOLET), ("#1 policy", AMBER),
                                Inches(yy + 0.72), Inches(0.2), Inches(0.22))
         a.fill.solid(); a.fill.fore_color.rgb = ACCENT; a.line.fill.background()
         a.shadow.inherit = False
-footer(s, 5)
+footer(s)
 
 # ========================= SLIDE 6 — DIFF 2: DURABLE CASES =================
 s = slide()
@@ -273,7 +327,7 @@ for i, (t, c) in enumerate([
     ("= rolled back · consistent", ACCENT),
 ]):
     text(s, 8.65, 3.1 + i * 0.5, 3.1, 0.5, [[R(t, 12.5, c, True)]])
-footer(s, 6)
+footer(s)
 
 # ========================= SLIDE 7 — METRICS ==============================
 s = slide()
@@ -287,9 +341,9 @@ rows = [
 ]
 # table header
 box(s, 0.9, 2.35, 11.5, 0.5, fill=ACCENT2, radius=False)
-text(s, 1.1, 2.42, 5, 0.4, [[R("Metric", 13, WHITE, True)]])
-text(s, 6.4, 2.42, 3, 0.4, [[R("Result", 13, WHITE, True)]])
-text(s, 9.4, 2.42, 3, 0.4, [[R("How it’s graded", 13, WHITE, True)]])
+text(s, 1.1, 2.42, 5, 0.4, [[R("Metric", 13, LIGHT, True)]])
+text(s, 6.4, 2.42, 3, 0.4, [[R("Result", 13, LIGHT, True)]])
+text(s, 9.4, 2.42, 3, 0.4, [[R("How it’s graded", 13, LIGHT, True)]])
 yy = 2.85
 for i, (m, res, how, col) in enumerate(rows):
     fill = CARD if i % 2 == 0 else BG
@@ -302,7 +356,7 @@ text(s, 0.9, yy + 0.2, 11.5, 0.9, [[
     R("We report TRUE resolution + escalation rate — not just deflection. ", 13, WHITE, True),
     R("Financial-services deflection is realistically 25–45%; finance teams target <1% error, "
       "because one wrong answer is a compliance event.", 13, MUTED)]])
-footer(s, 7)
+footer(s)
 
 # ========================= SLIDE 8 — WHY AMEX ==============================
 s = slide()
@@ -324,7 +378,7 @@ text(s, 0.9, 6.3, 11.5, 0.5, [[
     R("Deloitte, “Agentic AI is scaling faster than guardrails” (2025)   ·   "
       "Forbes / Peter High, “Ravi Radhakrishnan on Driving AI Innovation at American Express” (May 2025)",
       9.5, MUTED)]])
-footer(s, 8)
+footer(s)
 
 # ========================= SLIDE 9 — ARCHITECTURE =========================
 s = slide()
@@ -355,7 +409,7 @@ text(s, 1.2, 5.48, 11, 0.8, [[R("Stack   ", 13, ACCENT, True),
 text(s, 1.2, 5.72, 11, 0.4, [[
     R("Core-banking is mocked today; each call swaps to a real Amex API with no change to the agent logic.",
       12.5, MUTED)]])
-footer(s, 9)
+footer(s)
 
 # ========================= SLIDE 10 — NEXT / ASK ==========================
 s = slide()
@@ -370,9 +424,9 @@ bullets(s, 0.9, 2.4, 11.4, [
 ], gap=0.92, size=16.5)
 box(s, 0.9, 5.5, 11.5, 1.05, fill=ACCENT2, radius=True)
 text(s, 1.2, 5.72, 11, 0.7, [[
-    R("The ask:  ", 18, WHITE, True),
-    R("advance us to the prototype round — the core already works end-to-end.", 17, WHITE)]])
-footer(s, 10)
+    R("The ask:  ", 18, LIGHT, True),
+    R("advance us to the prototype round — the core already works end-to-end.", 17, LIGHT)]])
+footer(s)
 
 # --- save ------------------------------------------------------------------
 out = Path(__file__).resolve().parent / "CodeStreet2026_Servicing_Agent.pptx"

@@ -67,6 +67,20 @@ def audit_verify():
     return AUDIT.verify()
 
 
+@app.get("/graph")
+def graph():
+    """Audit trail as a graph for analysts. Neo4j-backed, memory fallback."""
+    from app.graph import model, neo4j_store
+    entries = AUDIT.entries()
+    data = neo4j_store.sync_and_read(entries)
+    if data is not None:
+        data["source"] = "neo4j"
+        return data
+    data = model.build_graph_from_entries(entries)
+    data["source"] = "memory"
+    return data
+
+
 class TamperReq(BaseModel):
     seq: int
     new_payload: dict = {"amount": 999999, "note": "unauthorized edit"}

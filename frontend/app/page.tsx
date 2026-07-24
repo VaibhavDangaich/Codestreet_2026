@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AuditPanel from "./components/AuditPanel";
 import CasesPanel from "./components/CasesPanel";
+import GraphView from "./components/GraphView";
 import {
   AuditEntry,
   Case,
@@ -56,6 +57,7 @@ export default function Home() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [verify, setVerify] = useState<Verify | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
+  const [rightTab, setRightTab] = useState<"audit" | "graph">("audit");
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -386,14 +388,35 @@ export default function Home() {
           </div>
         </section>
 
-        {/* RIGHT: audit trail */}
-        <section className="h-[calc(100vh-8rem)] lg:sticky lg:top-4">
-          <AuditPanel
-            entries={entries}
-            verify={verify}
-            onTamper={onTamper}
-            onRefresh={refreshAudit}
-          />
+        {/* RIGHT: audit trail / graph (tabbed) */}
+        <section className="flex h-[calc(100vh-8rem)] flex-col gap-2 lg:sticky lg:top-4">
+          <div className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1 text-xs">
+            {(["audit", "graph"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setRightTab(t)}
+                className={`flex-1 rounded-md px-3 py-1.5 font-medium capitalize transition ${
+                  rightTab === t
+                    ? "bg-sky-600 text-white"
+                    : "text-white/50 hover:text-white/80"
+                }`}
+              >
+                {t === "audit" ? "Audit trail" : "Audit graph"}
+              </button>
+            ))}
+          </div>
+          <div className="min-h-0 flex-1">
+            {rightTab === "audit" ? (
+              <AuditPanel
+                entries={entries}
+                verify={verify}
+                onTamper={onTamper}
+                onRefresh={refreshAudit}
+              />
+            ) : (
+              <GraphView />
+            )}
+          </div>
         </section>
       </main>
     </div>

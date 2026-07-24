@@ -127,3 +127,16 @@ export async function listCases() {
   const r = await fetch(`${BASE}/cases`);
   return ((await r.json()).cases ?? []) as Case[];
 }
+
+// --- audit graph (Neo4j) ---
+export type GraphElement = { data: Record<string, string> };
+export type GraphData = {
+  nodes: GraphElement[];
+  edges: GraphElement[];
+  source: "neo4j" | "memory";
+};
+
+export async function getGraph() {
+  const r = await fetch(`${BASE}/graph`);
+  return (await r.json()) as GraphData;
+}

@@ -273,19 +273,13 @@ bullets(s, 0.9, 2.3, 7.1, [
     ("Maps to model-risk (SR 11-7) & adverse-action explainability",
      "— audit-ready by design."),
 ], gap=0.82, size=15)
-# mini chain visual
-bx = 8.4
-for i, (lbl, col) in enumerate([("#0 request", VIOLET), ("#1 policy", AMBER),
-                                ("#2 backend", GREEN), ("#3 agent", ACCENT)]):
-    yy = 2.5 + i * 0.95
-    box(s, bx, yy, 3.6, 0.72, fill=CARD, line=col, line_w=1.25, radius=True)
-    text(s, bx + 0.2, yy + 0.1, 3.2, 0.5,
-         [[R(lbl, 13, WHITE, True), R("   hash◄prev", 10, MUTED)]])
-    if i < 3:
-        a = s.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(bx + 1.6),
-                               Inches(yy + 0.72), Inches(0.2), Inches(0.22))
-        a.fill.solid(); a.fill.fore_color.rgb = ACCENT; a.line.fill.background()
-        a.shadow.inherit = False
+# real Neo4j audit graph (live capture) — rules are nodes, linked APPLIED_RULE
+_g = Path(__file__).resolve().parent / "diagrams" / "ui_graph_panel.png"
+box(s, 8.35, 2.3, 4.1, 4.35, fill=LIGHT, line=ACCENT, line_w=1.0, radius=True)
+s.shapes.add_picture(str(_g), Inches(8.9), Inches(2.45), height=Inches(3.95))
+text(s, 8.35, 6.44, 4.1, 0.3,
+     [[R("Live Neo4j graph — policy rules are nodes (APPLIED_RULE)",
+         9, MUTED)]], align=PP_ALIGN.CENTER)
 footer(s)
 
 # ========================= SLIDE 6 — DIFF 2: DURABLE CASES =================

@@ -115,18 +115,18 @@ export default function GraphView() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+    <div className="glass-panel flex h-full flex-col overflow-hidden rounded-2xl">
+      <div className="flex items-center justify-between border-b border-white/50 px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Audit Graph</h2>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] font-medium text-slate-500">
             Analyst view · chain-of-custody as a graph
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden gap-2.5 text-[10px] sm:flex">
             {LEGEND.map(([t, label]) => (
-              <span key={t} className="flex items-center gap-1 text-slate-500">
+              <span key={t} className="flex items-center gap-1 font-medium text-slate-600">
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ background: TYPE_COLOR[t] }}
@@ -149,7 +149,7 @@ export default function GraphView() {
           )}
         </div>
       </div>
-      <div ref={boxRef} className="min-h-[520px] flex-1 bg-[#fbfcfe]" />
+      <div ref={boxRef} className="min-h-[520px] flex-1 bg-white/20" />
       {error && <p className="px-4 py-2 text-[11px] text-rose-500">{error}</p>}
     </div>
   );

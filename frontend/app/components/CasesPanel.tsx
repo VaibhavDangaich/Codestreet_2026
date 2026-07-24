@@ -64,13 +64,13 @@ export default function CasesPanel({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="glass-panel min-h-full rounded-2xl p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
             Durable Servicing Cases
           </h2>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] font-medium text-slate-500">
             Temporal-orchestrated · saga with automatic compensation · human-in-the-loop
           </p>
         </div>
@@ -82,23 +82,23 @@ export default function CasesPanel({
         </p>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 2xl:grid-cols-2">
         {cases.map((c) => {
           const s = c.state;
           return (
             <div
               key={c.case_id}
-              className="rounded-lg border border-slate-200 bg-white p-3"
+              className="rounded-xl border border-white/70 bg-white/80 p-3.5 shadow-sm"
             >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold capitalize text-slate-800">
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-semibold capitalize text-slate-800">
                   {c.intent.replace(/_/g, " ")}
                   <span className="ml-1 font-normal text-slate-400">
                     · {c.member_id}
                   </span>
                 </span>
                 <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize ${
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize ${
                     s?.final
                       ? FINAL_BADGE[s.final] ?? ""
                       : PHASE_BADGE[s?.phase ?? "starting"] ?? ""
@@ -119,12 +119,12 @@ export default function CasesPanel({
                           st === "undone"
                             ? "text-amber-600 line-through"
                             : st === "failed"
-                            ? "font-medium text-rose-600"
+                            ? "font-semibold text-rose-600"
                             : st === "done"
-                            ? "text-slate-700"
+                            ? "font-medium text-slate-800"
                             : st === "current"
-                            ? "font-medium text-sky-700"
-                            : "text-slate-400"
+                            ? "font-semibold text-sky-700"
+                            : "text-slate-500"
                         }
                       >
                         {STEP_LABEL[step] ?? step}

@@ -18,6 +18,68 @@ function short(h: string) {
   return h.slice(0, 8) + "…" + h.slice(-6);
 }
 
+function humanKey(k: string) {
+  return k.replace(/_/g, " ");
+}
+
+function Val({ v }: { v: any }) {
+  if (v === null || v === undefined)
+    return <span className="text-slate-300">—</span>;
+  if (typeof v === "boolean")
+    return (
+      <span
+        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+          v ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+        }`}
+      >
+        {String(v)}
+      </span>
+    );
+  if (typeof v === "number")
+    return <span className="font-mono text-slate-800">{v}</span>;
+  if (typeof v === "string")
+    return <span className="text-slate-700">{v || "—"}</span>;
+  if (Array.isArray(v))
+    return v.length ? (
+      <span className="flex flex-wrap gap-1">
+        {v.map((x, i) => (
+          <span
+            key={i}
+            className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600"
+          >
+            {typeof x === "object" ? JSON.stringify(x) : String(x)}
+          </span>
+        ))}
+      </span>
+    ) : (
+      <span className="text-slate-300">empty</span>
+    );
+  return <KV data={v} nested />;
+}
+
+function KV({ data, nested }: { data: Record<string, any>; nested?: boolean }) {
+  const entries = Object.entries(data);
+  if (!entries.length) return <span className="text-slate-300">—</span>;
+  return (
+    <div
+      className={`divide-y divide-slate-100 ${
+        nested ? "mt-1 overflow-hidden rounded-md border border-slate-200 bg-white" : ""
+      }`}
+    >
+      {entries.map(([k, v]) => (
+        <div key={k} className="flex gap-2 px-2 py-1">
+          <span className="min-w-[84px] shrink-0 text-[10px] font-semibold capitalize text-slate-500">
+            {humanKey(k)}
+          </span>
+          <span className="min-w-0 break-words text-[11px]">
+            <Val v={v} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AuditPanel({
   entries,
   verify,
@@ -30,13 +92,13 @@ export default function AuditPanel({
   onRefresh: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+    <div className="glass-panel flex h-full flex-col overflow-hidden rounded-2xl">
+      <div className="flex items-center justify-between border-b border-white/50 px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
             Immutable Audit Trail
           </h2>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] font-medium text-slate-500">
             SHA-256 hash-chained · tamper-evident
           </p>
         </div>
@@ -64,7 +126,7 @@ export default function AuditPanel({
         </div>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50/60 px-3 py-3">
+      <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
         {entries.length === 0 && (
           <p className="pt-10 text-center text-sm text-slate-400">
             No audit events yet. Interact with the agent to grow the chain.
@@ -73,16 +135,19 @@ export default function AuditPanel({
         {entries.map((e) => {
           const broken =
             verify && !verify.intact && verify.broken_at_seq === e.seq;
+          const hasPayload = Object.keys(e.payload).length > 0;
           return (
             <div
               key={e.seq}
-              className={`group rounded-lg border bg-white p-2.5 text-xs shadow-sm transition ${
-                broken ? "border-rose-300 ring-1 ring-rose-200" : "border-slate-200"
+              className={`group rounded-xl border bg-white/85 p-2.5 text-xs shadow-sm transition ${
+                broken ? "border-rose-300 ring-1 ring-rose-200" : "border-white/70"
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-slate-300">#{e.seq}</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="font-mono text-[11px] text-slate-300">
+                    #{e.seq}
+                  </span>
                   <span
                     className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${
                       ACTOR_STYLES[e.actor] ?? ACTOR_STYLES.system
@@ -90,21 +155,25 @@ export default function AuditPanel({
                   >
                     {e.actor}
                   </span>
-                  <span className="font-medium text-slate-700">{e.action}</span>
+                  <span className="truncate font-semibold text-slate-800">
+                    {e.action}
+                  </span>
                 </div>
                 <button
                   onClick={() => onTamper(e.seq)}
                   title="Demo: tamper with this entry"
-                  className="text-[10px] text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-rose-500"
+                  className="shrink-0 text-[10px] text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-rose-500"
                 >
                   tamper
                 </button>
               </div>
-              {Object.keys(e.payload).length > 0 && (
-                <pre className="mt-1.5 overflow-x-auto rounded-md border border-slate-100 bg-slate-50 p-2 text-[10px] leading-relaxed text-slate-500">
-                  {JSON.stringify(e.payload, null, 2)}
-                </pre>
+
+              {hasPayload && (
+                <div className="mt-1.5 rounded-lg border border-slate-100 bg-slate-50/70 p-1">
+                  <KV data={e.payload} />
+                </div>
               )}
+
               <div className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-slate-300">
                 <span title={e.prev_hash}>prev {short(e.prev_hash)}</span>
                 <span>→</span>

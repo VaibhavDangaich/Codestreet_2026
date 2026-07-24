@@ -71,3 +71,27 @@ export function IconPlus(p: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function IconExpand(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} {...base} {...p}>
+      <path d="M9 4H4v5M20 9V4h-5M15 20h5v-5M4 15v5h5" />
+    </svg>
+  );
+}
+
+export function IconMinimize(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} {...base} {...p}>
+      <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" />
+    </svg>
+  );
+}
+
+export function IconClose(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} {...base} {...p}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}

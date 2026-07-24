@@ -4,7 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AuditPanel from "./components/AuditPanel";
 import CasesPanel from "./components/CasesPanel";
 import GraphView from "./components/GraphView";
-import { IconMark, IconMic, IconSend } from "./components/icons";
+import {
+  IconClose,
+  IconExpand,
+  IconMark,
+  IconMic,
+  IconMinimize,
+  IconSend,
+} from "./components/icons";
 import {
   AuditEntry,
   Case,
@@ -28,6 +35,8 @@ type Msg = {
   escalation?: string | null;
 };
 
+type Tab = "cases" | "audit" | "graph";
+
 const MEMBERS = [
   { id: "M-1001", label: "Priya Sharma — good standing" },
   { id: "M-2002", label: "Alex Chen — delinquent" },
@@ -40,7 +49,11 @@ const QUICK = [
   "Why is my statement so high this month?",
 ];
 
-const CASE_ACTIONS: { label: string; dot: string; run: () => [string, Record<string, unknown>, boolean] }[] = [
+const CASE_ACTIONS: {
+  label: string;
+  dot: string;
+  run: () => [string, Record<string, unknown>, boolean];
+}[] = [
   { label: "New card", dot: "bg-emerald-500", run: () => ["card_replacement", { fee: 0 }, false] },
   { label: "Card → rollback", dot: "bg-amber-500", run: () => ["card_replacement", {}, true] },
   { label: "$50k limit → approval", dot: "bg-sky-500", run: () => ["limit_increase", { new_limit: 50000 }, false] },
@@ -54,6 +67,12 @@ const STATUS_BADGE: Record<string, string> = {
   answered: "border-violet-200 bg-violet-50 text-violet-700",
 };
 
+const TABS: [Tab, string][] = [
+  ["cases", "Cases"],
+  ["audit", "Audit trail"],
+  ["graph", "Audit graph"],
+];
+
 export default function Home() {
   const [memberId, setMemberId] = useState("M-1001");
   const [member, setMember] = useState<Member | null>(null);
@@ -64,7 +83,8 @@ export default function Home() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [verify, setVerify] = useState<Verify | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
-  const [rightTab, setRightTab] = useState<"audit" | "graph">("audit");
+  const [tab, setTab] = useState<Tab>("cases");
+  const [expanded, setExpanded] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -78,25 +98,19 @@ export default function Home() {
       const [e, v] = await Promise.all([getAudit(), verifyAudit()]);
       setEntries(e);
       setVerify(v);
-    } catch {
-      /* backend not up yet */
-    }
+    } catch {}
   }, []);
 
   const refreshMember = useCallback(async (id: string) => {
     try {
       setMember(await getMember(id));
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }, []);
 
   const refreshCases = useCallback(async () => {
     try {
       setCases(await listCases());
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -119,6 +133,7 @@ export default function Home() {
     params: Record<string, unknown>,
     force_fail: boolean
   ) {
+    setTab("cases");
     await startCase(memberId, intent, params, force_fail);
     refreshCases();
   }
@@ -126,6 +141,13 @@ export default function Home() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 9e9, behavior: "smooth" });
   }, [messages]);
+
+  // close fullscreen on Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === "Escape" && setExpanded(false);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   async function submit(text: string) {
     if (!text.trim() || busy || !sessionId) return;
@@ -190,11 +212,72 @@ export default function Home() {
     setListening(true);
   }
 
+  function DockContent({ full }: { full: boolean }) {
+    return (
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div key={tab} className="tab-anim h-full">
+          {tab === "cases" && (
+            <div className="h-full overflow-auto">
+              <CasesPanel cases={cases} onChanged={refreshCases} />
+            </div>
+          )}
+          {tab === "audit" && (
+            <AuditPanel
+              entries={entries}
+              verify={verify}
+              onTamper={onTamper}
+              onRefresh={refreshAudit}
+            />
+          )}
+          {tab === "graph" && <GraphView key={`graph-${full ? "full" : "dock"}`} />}
+        </div>
+      </div>
+    );
+  }
+
+  function DockBar({ full }: { full: boolean }) {
+    const idx = TABS.findIndex(([t]) => t === tab);
+    return (
+      <div className="flex items-center gap-2">
+        <div className="glass relative flex flex-1 rounded-2xl p-1">
+          {/* sliding frosted indicator */}
+          <span
+            className="pointer-events-none absolute top-1 bottom-1 rounded-xl border border-white/80 bg-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.35)]"
+            style={{
+              left: `calc(0.25rem + ${idx} * ((100% - 0.5rem) / 3))`,
+              width: "calc((100% - 0.5rem) / 3)",
+              transition:
+                "left 0.42s cubic-bezier(0.22,1,0.36,1), width 0.42s cubic-bezier(0.22,1,0.36,1)",
+            }}
+          />
+          {TABS.map(([t, label]) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`relative z-10 flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors duration-300 ${
+                tab === t ? "text-blue-700" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setExpanded(!full)}
+          className="glass grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-500 transition hover:text-slate-800"
+          title={full ? "Exit fullscreen (Esc)" : "Expand"}
+        >
+          {full ? <IconMinimize /> : <IconExpand />}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen">
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Top bar */}
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+      <header className="z-10 shrink-0 border-b border-white/60 bg-white/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-6 py-2.5">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-white">
               <IconMark />
@@ -240,15 +323,11 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-6 pt-4">
-        <CasesPanel cases={cases} onChanged={refreshCases} />
-      </div>
-
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-6 py-4 lg:grid-cols-2">
-        {/* LEFT: member + chat */}
-        <section className="flex flex-col gap-4">
+      <main className="mx-auto grid w-full min-h-0 max-w-[1600px] flex-1 grid-cols-1 gap-4 px-6 py-4 lg:grid-cols-[1.5fr_1fr]">
+        {/* LEFT: member + big chat */}
+        <section className="flex min-h-0 flex-col gap-3">
           {member && (
-            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm shadow-sm">
+            <div className="glass-panel grid shrink-0 grid-cols-3 gap-px overflow-hidden rounded-2xl text-sm sm:grid-cols-6">
               {[
                 ["Member", member.name],
                 ["Credit limit", `$${member.credit_limit.toLocaleString()}`],
@@ -259,11 +338,13 @@ export default function Home() {
                   member.good_standing ? "text-emerald-600" : "text-rose-600",
                 ],
                 ["Open fees", String(member.fees.filter((f) => !f.reversed).length)],
-                ["Reversals used", String(member.fee_reversals_used)],
+                ["Reversals", String(member.fee_reversals_used)],
               ].map(([label, value, cls]) => (
-                <div key={label} className="bg-white px-4 py-3">
-                  <p className="text-[11px] text-slate-400">{label}</p>
-                  <p className={`font-medium capitalize text-slate-800 ${cls ?? ""}`}>
+                <div key={label} className="bg-white/55 px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    {label}
+                  </p>
+                  <p className={`truncate text-sm font-semibold capitalize text-slate-900 ${cls ?? ""}`}>
                     {value}
                   </p>
                 </div>
@@ -271,22 +352,20 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex min-h-[440px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-4 py-2.5">
+          <div className="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl">
+            <div className="shrink-0 border-b border-white/50 px-4 py-2.5">
               <h2 className="text-sm font-semibold text-slate-900">Conversation</h2>
             </div>
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.length === 0 && (
                 <div className="space-y-2 pt-6">
-                  <p className="text-center text-xs text-slate-400">
-                    Try a request
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <p className="text-center text-xs font-medium text-slate-500">Try a request</p>
+                  <div className="mx-auto flex max-w-xl flex-wrap justify-center gap-2">
                     {QUICK.map((q) => (
                       <button
                         key={q}
                         onClick={() => submit(q)}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                        className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                       >
                         {q}
                       </button>
@@ -297,15 +376,13 @@ export default function Home() {
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`flex ${
-                    m.role === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                       m.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "border border-slate-200 bg-white text-slate-700"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "border border-white/70 bg-white/90 text-slate-800 shadow-sm"
                     }`}
                   >
                     {m.role === "agent" && m.status && (
@@ -318,14 +395,14 @@ export default function Home() {
                           {m.status.replace("_", " ")}
                         </span>
                         {m.classification && (
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] font-medium text-slate-500">
                             {m.classification.intent} ·{" "}
                             {(m.classification.confidence * 100).toFixed(0)}%
                           </span>
                         )}
                       </div>
                     )}
-                    <p>{m.text}</p>
+                    <p className="leading-relaxed">{m.text}</p>
                     {m.escalation && (
                       <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
                         <span className="font-semibold">
@@ -339,14 +416,14 @@ export default function Home() {
               ))}
               {busy && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-400">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-400">
                     resolving…
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 border-t border-slate-200 p-3">
+            <div className="flex shrink-0 items-center gap-2 border-t border-white/50 p-3">
               <button
                 onClick={toggleVoice}
                 className={`grid h-9 w-9 place-items-center rounded-lg border text-sm transition ${
@@ -363,12 +440,12 @@ export default function Home() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit(input)}
                 placeholder="Ask the servicing agent…"
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-400"
+                className="flex-1 rounded-lg border border-white/60 bg-white/70 px-3.5 py-2.5 text-sm text-slate-800 outline-none backdrop-blur-sm placeholder:text-slate-400 focus:border-blue-400"
               />
               <button
                 onClick={() => submit(input)}
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
               >
                 <IconSend /> Send
               </button>
@@ -376,37 +453,37 @@ export default function Home() {
           </div>
         </section>
 
-        {/* RIGHT: audit trail / graph */}
-        <section className="flex h-[calc(100vh-8rem)] flex-col gap-2 lg:sticky lg:top-[4.5rem]">
-          <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1 text-xs shadow-sm">
-            {(["audit", "graph"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setRightTab(t)}
-                className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
-                  rightTab === t
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                {t === "audit" ? "Audit trail" : "Audit graph"}
-              </button>
-            ))}
-          </div>
-          <div className="min-h-0 flex-1">
-            {rightTab === "audit" ? (
-              <AuditPanel
-                entries={entries}
-                verify={verify}
-                onTamper={onTamper}
-                onRefresh={refreshAudit}
-              />
-            ) : (
-              <GraphView />
-            )}
-          </div>
+        {/* RIGHT: dock */}
+        <section className="flex min-h-0 flex-col gap-2">
+          {DockBar({ full: false })}
+          {expanded ? (
+            <div className="grid flex-1 place-items-center rounded-2xl border border-dashed border-slate-300 bg-white/70 text-sm text-slate-400 backdrop-blur-md">
+              Panel opened in fullscreen — press Esc to return
+            </div>
+          ) : (
+            DockContent({ full: false })
+          )}
         </section>
       </main>
+
+      {/* Fullscreen overlay */}
+      {expanded && (
+        <div className="fixed inset-0 z-50 bg-slate-900/30 p-4 backdrop-blur-sm">
+          <div className="mx-auto flex h-full max-w-[1500px] flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex-1">{DockBar({ full: true })}</div>
+              <button
+                onClick={() => setExpanded(false)}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50"
+                title="Close (Esc)"
+              >
+                <IconClose />
+              </button>
+            </div>
+            {DockContent({ full: true })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

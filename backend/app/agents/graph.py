@@ -16,6 +16,7 @@ from langgraph.graph import END, StateGraph
 
 from app.agents.assistant import assist
 from app.agents.classifier import classify
+from app.agents.verifier import Verdict, verify
 from app.audit.chain import AUDIT
 from app.config import CONFIDENCE_THRESHOLD, now_iso
 from app.flows.handlers import DISPATCH, _escalate
@@ -28,6 +29,8 @@ class AgentState(TypedDict, total=False):
     message: str
     classification: Classification
     resolution: Resolution
+    verified: bool
+    verify_reason: str
 
 
 def _log(state, actor, action, payload):
@@ -36,17 +39,42 @@ def _log(state, actor, action, payload):
                  action=action, payload=payload)
 
 
+def _classify_and_verify(message: str):
+    """Propose -> verify -> (revise) loop. A second agent must agree the
+    interpretation matches the request; on disagreement the proposer re-reads
+    with the reviewer's note, bounded to 2 attempts.
+
+    Risk-based: we only spend the second agent on money-moving (limit increase)
+    or low-confidence proposals — high-confidence fee/card requests skip it."""
+    c = classify(message)
+    risky = c.intent == Intent.LIMIT_INCREASE or c.confidence < 0.85
+    if not risky:
+        return c, Verdict(agree=True,
+                          reason="low-risk, high-confidence — second-agent check not required"), 0
+    v = verify(message, c.intent.value, c.extracted_fields)
+    attempts = 1
+    while not v.agree and attempts < 2:
+        c = classify(f"{message}\n[Reviewer flagged: {v.reason}. Re-read carefully.]")
+        v = verify(message, c.intent.value, c.extracted_fields)
+        attempts += 1
+    return c, v, attempts
+
+
 def node_classify(state: AgentState) -> AgentState:
     _log(state, "system", "request_received", {"message": state["message"]})
-    c = classify(state["message"])
+    c, v, attempts = _classify_and_verify(state["message"])
     _log(state, "classifier", "intent_classified",
          {"intent": c.intent.value, "confidence": c.confidence,
           "fields": c.extracted_fields, "rationale": c.rationale})
-    return {"classification": c}
+    _log(state, "verifier", "verification",
+         {"agree": v.agree, "reason": v.reason, "attempts": attempts})
+    return {"classification": c, "verified": v.agree, "verify_reason": v.reason}
 
 
 def _route(state: AgentState) -> str:
     c = state["classification"]
+    if not state.get("verified", True):
+        return "handle_uncertain"
     if c.intent == Intent.UNKNOWN or c.confidence < CONFIDENCE_THRESHOLD:
         return "handle_uncertain"
     return c.intent.value
@@ -54,6 +82,18 @@ def _route(state: AgentState) -> str:
 
 def node_uncertain(state: AgentState) -> AgentState:
     c = state["classification"]
+    # Verifier disagreed on a known intent -> don't act; get a human.
+    if not state.get("verified", True) and c.intent != Intent.UNKNOWN:
+        _log(state, "verifier", "verification_failed_escalate",
+             {"intent": c.intent.value, "reason": state.get("verify_reason")})
+        res = _escalate(
+            state["session_id"], state["member_id"], c.intent,
+            f"verifier could not confirm this maps to the request "
+            f"({state.get('verify_reason')})",
+            {"message": state["message"]},
+            message=("Let me get a second pair of eyes on this before I act — "
+                     "I'm routing it to a specialist to be safe."))
+        return {"resolution": res}
     _log(state, "policy", "low_confidence_or_unknown",
          {"intent": c.intent.value, "confidence": c.confidence,
           "threshold": CONFIDENCE_THRESHOLD})

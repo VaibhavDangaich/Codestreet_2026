@@ -78,7 +78,7 @@ def _trip():
 
 def sync_and_read(entries: list[dict]) -> dict[str, Any] | None:
     """Push new entries, then read the whole graph. None if Neo4j is unavailable."""
-    global _synced
+    global _synced, _driver
     if not configured() or _cool():
         return None
     try:
@@ -111,5 +111,12 @@ def sync_and_read(entries: list[dict]) -> dict[str, Any] | None:
                                    "source": src, "target": dst, "label": r["rel"]}})
         return {"nodes": nodes, "edges": edges}
     except Exception:
+        # drop a stale connection so the next call reconnects
+        try:
+            if _driver is not None:
+                _driver.close()
+        except Exception:
+            pass
+        _driver = None
         _trip()
         return None

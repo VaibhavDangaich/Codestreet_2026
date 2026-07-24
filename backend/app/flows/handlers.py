@@ -74,14 +74,18 @@ def handle_fee_reversal(session_id, member_id, fields) -> Resolution:
 # --- 2. Credit limit increase ---------------------------------------------
 def handle_limit_increase(session_id, member_id, fields) -> Resolution:
     m = cards.get_member(member_id)
-    requested = fields.get("amount")
-    # If member gave a target, treat as desired new limit; else default bump 20%.
-    if requested:
-        new_limit = float(requested)
-        increase = new_limit - m.credit_limit
-    else:
-        increase = round(m.credit_limit * 0.20, 2)
-        new_limit = m.credit_limit + increase
+    requested = fields.get("new_limit") or fields.get("amount")
+    # No target given -> ask (this triggers the multi-turn slot-fill follow-up).
+    if not requested:
+        _log(session_id, member_id, "agent", "await_slot",
+             {"intent": "limit_increase", "slot": "new_limit"})
+        return Resolution(
+            status="needs_info", intent=Intent.LIMIT_INCREASE,
+            message=(f"Happy to help. Your current limit is "
+                     f"${m.credit_limit:,.0f} — what new limit would you like?"),
+            details={"awaiting": "new_limit"})
+    new_limit = float(requested)
+    increase = new_limit - m.credit_limit
 
     cap_abs = POLICY.limit_increase_abs_max
     cap_pct = POLICY.limit_increase_pct_max * m.credit_limit

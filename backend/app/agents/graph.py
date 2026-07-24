@@ -9,6 +9,7 @@ narrated in the audit trail and drawn on a slide. State is a TypedDict.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -115,11 +116,69 @@ def build_graph():
 
 _GRAPH = None
 
+# --- lightweight per-session memory for multi-turn follow-ups ---------------
+# session_id -> {"history": [...], "pending": {...} | None}
+SESSIONS: dict[str, dict] = {}
+
+_AMOUNT_RE = re.compile(r"\$?\s*([\d][\d,]*(?:\.\d+)?)\s*(k|thousand)?", re.I)
+
+
+def _extract_amount(text: str) -> Optional[float]:
+    m = _AMOUNT_RE.search(text)
+    if not m:
+        return None
+    val = float(m.group(1).replace(",", ""))
+    if m.group(2):
+        val *= 1000
+    return val
+
+
+def _session(session_id: str) -> dict:
+    return SESSIONS.setdefault(session_id, {"history": [], "pending": None})
+
+
+def _base_state(member_id, session_id, message) -> AgentState:
+    return {"session_id": session_id, "member_id": member_id, "message": message}
+
 
 def run_agent(member_id: str, message: str, session_id: str = "default") -> AgentState:
     global _GRAPH
     if _GRAPH is None:
         _GRAPH = build_graph()
-    state: AgentState = {"session_id": session_id, "member_id": member_id,
-                         "message": message}
-    return _GRAPH.invoke(state)
+
+    sess = _session(session_id)
+    sess["history"].append({"role": "user", "text": message})
+    pending = sess.get("pending")
+
+    # 1) If we're waiting on a slot from a previous turn, try to fill it.
+    if pending and pending.get("slot") == "new_limit":
+        amount = _extract_amount(message)
+        if amount is not None:
+            _log(_base_state(member_id, session_id, message), "agent",
+                 "followup_slot_filled", {"slot": "new_limit", "value": amount})
+            res = DISPATCH[Intent.LIMIT_INCREASE](
+                session_id, member_id, {"new_limit": amount})
+            sess["pending"] = (
+                {"slot": "new_limit"} if res.status == "needs_info" else None)
+            sess["history"].append({"role": "agent", "text": res.message})
+            return {**_base_state(member_id, session_id, message),
+                    "resolution": res}
+        # not an amount -> user likely changed topic; fall through to classify
+        sess["pending"] = None
+
+    # 2) Normal turn through the graph.
+    state = _GRAPH.invoke(_base_state(member_id, session_id, message))
+    res = state.get("resolution")
+
+    # 3) Remember if the agent asked a follow-up question, so the next message
+    #    is interpreted as the answer.
+    if res is not None and res.status == "needs_info":
+        if res.intent == Intent.LIMIT_INCREASE:
+            sess["pending"] = {"slot": "new_limit"}
+        else:
+            sess["pending"] = {"slot": "reclassify"}
+    else:
+        sess["pending"] = None
+    if res is not None:
+        sess["history"].append({"role": "agent", "text": res.message})
+    return state

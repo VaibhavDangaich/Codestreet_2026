@@ -1,0 +1,23 @@
+%% High-level architecture — End-to-End Servicing Agent
+%% Render at https://mermaid.live or import into Excalidraw (Mermaid to Excalidraw)
+flowchart LR
+  UI["Next.js console<br/>chat · cases · audit · graph"]
+  API["FastAPI<br/>(owns card state + audit chain)"]
+  AG["LangGraph agent<br/>classifier · policy gates · 3 flows · assistant"]
+  AUD[("Hash-chained<br/>audit chain (SHA-256)")]
+  TS["Temporal server"]
+  W["Worker"]
+  WF["ServicingCaseWorkflow<br/>saga · compensation · human approval"]
+  NEO[("Neo4j Aura")]
+  CY["Cytoscape analyst graph"]
+
+  UI -->|HTTP| API
+  API --> AG
+  AG --> AUD
+  API -->|start / signal / query| TS
+  TS --> W
+  W --> WF
+  WF -->|do_action activity → /internal/action| API
+  API -->|/graph| NEO
+  NEO --> CY
+  CY -.-> UI

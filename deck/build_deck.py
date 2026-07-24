@@ -411,7 +411,40 @@ text(s, 1.2, 5.72, 11, 0.4, [[
       12.5, MUTED)]])
 footer(s)
 
-# ========================= SLIDE 10 — NEXT / ASK ==========================
+# ========================= SLIDE 11 — SYSTEM DESIGN (LLD) ==================
+s = slide()
+header(s, "System design", "Low-level design — how a durable case executes")
+_seq = Path(__file__).resolve().parent / "diagrams" / "durable_case_sequence.png"
+s.shapes.add_picture(str(_seq), Inches(0.85), Inches(2.15), width=Inches(7.15))
+MONO = "Courier New"
+# components card
+box(s, 8.25, 2.15, 4.2, 2.15, fill=CARD, line=ACCENT, line_w=1.0, radius=True)
+text(s, 8.5, 2.28, 3.8, 0.3, [[R("Components", 12, ACCENT2, True)]])
+for i, (k, v) in enumerate([
+    ("FastAPI", "owns card state + audit chain"),
+    ("LangGraph", "classify · policy · flows · assist"),
+    ("Temporal worker", "durable saga + compensation"),
+    ("Neo4j Aura", "audit graph for analysts"),
+]):
+    text(s, 8.5, 2.62 + i * 0.38, 3.85, 0.34,
+         [[R(k + "  ", 10.5, WHITE, True), R(v, 10, MUTED)]])
+# data model + APIs card
+box(s, 8.25, 4.5, 4.2, 2.38, fill=CARD, line=ACCENT, line_w=1.0, radius=True)
+text(s, 8.5, 4.62, 3.8, 0.3, [[R("Audit entry (hash-chained)", 12, ACCENT2, True)]])
+text(s, 8.5, 4.94, 3.85, 0.5,
+     [[R("{ seq, actor, action,", 9.5, WHITE, False, MONO)],
+      [R("  payload, prev_hash, hash }", 9.5, WHITE, False, MONO)]])
+text(s, 8.5, 5.62, 3.8, 0.3, [[R("Key APIs", 12, ACCENT2, True)]])
+for i, api in enumerate([
+    "POST /chat",
+    "POST /cases/start · /decision",
+    "POST /internal/action/{action}",
+    "GET  /cases · /graph",
+]):
+    text(s, 8.5, 5.94 + i * 0.235, 3.85, 0.22, [[R(api, 9.5, WHITE, False, MONO)]])
+footer(s)
+
+# ========================= SLIDE 12 — NEXT / ASK ==========================
 s = slide()
 header(s, "What’s next", "From prototype to production")
 bullets(s, 0.9, 2.4, 11.4, [

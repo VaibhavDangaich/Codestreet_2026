@@ -1,0 +1,30 @@
+%% Durable servicing case — execution sequence (saga + compensation + human-in-the-loop)
+%% Render at https://mermaid.live or import into Excalidraw (Mermaid to Excalidraw)
+sequenceDiagram
+    autonumber
+    participant UI as Console
+    participant API as FastAPI
+    participant WF as ServicingCaseWorkflow (Temporal)
+    participant SVC as Services (card · ledger · fulfillment)
+
+    UI->>API: POST /cases/start {intent, params}
+    API->>WF: start workflow (plan, requires_approval)
+
+    alt over policy
+        WF-->>UI: query status = awaiting_approval
+        UI->>API: POST /cases/{id}/decision (approve)
+        API->>WF: signal submit_decision(true)
+    end
+
+    loop each saga step
+        WF->>API: do_action → POST /internal/action/{action}
+        API->>SVC: mutate state + write audit entry
+        SVC-->>WF: ok
+    end
+
+    alt a step fails after retries
+        WF->>API: compensate completed steps in reverse
+        Note over WF,SVC: refund fee → unblock card → rolled_back
+    end
+
+    WF-->>UI: final status (resolved | rolled_back | denied | expired)

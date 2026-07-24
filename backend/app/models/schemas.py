@@ -32,7 +32,7 @@ class Classification(BaseModel):
 class Resolution(BaseModel):
     """Final outcome of handling a request."""
 
-    status: Literal["resolved", "escalated", "needs_info", "rejected"]
+    status: Literal["resolved", "escalated", "needs_info", "rejected", "answered"]
     message: str
     intent: Intent
     details: dict[str, Any] = Field(default_factory=dict)

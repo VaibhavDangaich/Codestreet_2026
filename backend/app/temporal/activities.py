@@ -1,8 +1,8 @@
-"""Temporal activities — the side-effecting steps.
+"""Temporal activities — side-effecting saga steps.
 
-Activities run OUTSIDE the workflow sandbox, so real I/O (HTTP) is allowed here.
-The scan activity calls the FastAPI backend, which owns the card state + audit
-chain, keeping a single source of truth.
+`do_action` calls the backend's /internal/action endpoint (the backend owns card
+state + the audit chain). Returning ok=False raises, so Temporal retries and, if
+still failing, the workflow triggers compensation.
 """
 from __future__ import annotations
 
@@ -15,12 +15,13 @@ BACKEND = os.getenv("BACKEND_URL", "http://127.0.0.1:8010")
 
 
 @activity.defn
-async def scan_tick() -> dict:
-    """One monitoring pass across all members via the backend."""
+async def do_action(action: str, member_id: str, params: dict) -> dict:
     async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(f"{BACKEND}/monitor/tick")
+        r = await client.post(f"{BACKEND}/internal/action/{action}",
+                              json={"member_id": member_id, "params": params})
         r.raise_for_status()
         data = r.json()
-    if data.get("count"):
-        activity.logger.info(f"Autonomous actions taken: {data['count']}")
+    if not data.get("ok"):
+        # deliberate failure signal -> Temporal retry / saga compensation
+        raise RuntimeError(data.get("error", f"action_failed:{action}"))
     return data

@@ -13,6 +13,7 @@ from typing import Any, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from app.agents.assistant import assist
 from app.agents.classifier import classify
 from app.audit.chain import AUDIT
 from app.config import CONFIDENCE_THRESHOLD, now_iso
@@ -56,11 +57,23 @@ def node_uncertain(state: AgentState) -> AgentState:
          {"intent": c.intent.value, "confidence": c.confidence,
           "threshold": CONFIDENCE_THRESHOLD})
     if c.intent == Intent.UNKNOWN:
-        res = Resolution(
-            status="needs_info", intent=Intent.UNKNOWN,
-            message=("I can help with fee reversals, credit-limit increases, or "
-                     "card replacements. Which of those is it — or tell me a bit "
-                     "more?"))
+        # Not a rigid menu: let the assistant inform, escalate, or clarify —
+        # but never *act* on the account (actions stay scoped to the 3 intents).
+        a = assist(state["message"])
+        _log(state, "agent", "assist", {"kind": a.kind})
+        if a.kind == "escalate":
+            res = _escalate(state["session_id"], state["member_id"],
+                            Intent.UNKNOWN, "out-of-scope servicing request",
+                            {"message": state["message"]})
+            res.message = a.message
+            if a.escalation_summary:
+                res.escalation_summary = a.escalation_summary
+        elif a.kind == "info":
+            res = Resolution(status="answered", intent=Intent.UNKNOWN,
+                             message=a.message)
+        else:  # clarify
+            res = Resolution(status="needs_info", intent=Intent.UNKNOWN,
+                             message=a.message)
     else:
         res = _escalate(state["session_id"], state["member_id"], c.intent,
                         f"classifier confidence {c.confidence:.2f} below "

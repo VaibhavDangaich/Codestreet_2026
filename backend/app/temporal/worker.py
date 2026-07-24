@@ -1,8 +1,6 @@
-"""Temporal worker: hosts the CardMonitorWorkflow + scan activity.
+"""Temporal worker: hosts ServicingCaseWorkflow + the do_action activity.
 
-Run (with the backend already up):
-    scripts/run_worker.sh
-It connects to a local Temporal dev server (localhost:7233).
+Run (backend + temporal server already up):  scripts/run_worker.sh
 """
 from __future__ import annotations
 
@@ -12,10 +10,10 @@ import os
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from app.temporal.activities import scan_tick
-from app.temporal.workflows import CardMonitorWorkflow
+from app.temporal.activities import do_action
+from app.temporal.client import TASK_QUEUE
+from app.temporal.workflows import ServicingCaseWorkflow
 
-TASK_QUEUE = "card-monitor"
 TEMPORAL_ADDR = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 
 
@@ -24,8 +22,8 @@ async def main() -> None:
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
-        workflows=[CardMonitorWorkflow],
-        activities=[scan_tick],
+        workflows=[ServicingCaseWorkflow],
+        activities=[do_action],
     )
     print(f"[worker] connected to {TEMPORAL_ADDR}, task queue '{TASK_QUEUE}' — running")
     await worker.run()

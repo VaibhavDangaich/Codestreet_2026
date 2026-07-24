@@ -180,9 +180,13 @@ for title_, col, body in cards:
     text(s, x + 0.35, 3.1, 3.1, 0.7, [[R(title_, 18, WHITE, True)]])
     text(s, x + 0.35, 3.85, 3.1, 1.4, [[R(body, 13.5, MUTED)]])
     x += 3.95
-text(s, 0.9, 5.75, 11.5, 0.7, [[
+text(s, 0.9, 5.7, 11.5, 0.6, [[
     R("Single interaction.  ", 18, WHITE, True), R("Real actions.  ", 18, ACCENT, True),
     R("Complete traceability.", 18, WHITE, True)]], align=PP_ALIGN.CENTER)
+text(s, 0.9, 6.35, 11.5, 0.4, [[
+    R("Plus  ", 12.5, ACCENT, True),
+    R("multi-turn follow-ups (slot-filling) · voice input · safe out-of-scope handling "
+      "(answer / escalate / clarify)", 12.5, MUTED)]], align=PP_ALIGN.CENTER)
 footer(s, 3)
 
 # ========================= SLIDE 4 — HOW IT WORKS ==========================
@@ -216,16 +220,18 @@ footer(s, 4)
 # ========================= SLIDE 5 — DIFF 1: AUDIT =========================
 s = slide()
 header(s, "Differentiator 1", "Tamper-evident audit trail — trust by architecture", ecolor=ACCENT)
-bullets(s, 0.9, 2.4, 7.1, [
+bullets(s, 0.9, 2.3, 7.1, [
     ("Every decision, policy check & backend call is hash-chained (SHA-256)",
      "— each entry seals the one before it."),
     ("Edit any past entry and every downstream hash breaks",
-     "— we catch it live in the demo (verify flips to ‘broken @ seq N’)."),
+     "— caught live in the demo (verify flips to ‘broken @ seq N’)."),
     ("Complete chain-of-custody, not sampling",
      "— the difference between ‘we think’ and ‘we can prove’."),
+    ("Persisted to Neo4j — explorable as an analyst graph",
+     "— query the whole chain of custody, not scroll a log."),
     ("Maps to model-risk (SR 11-7) & adverse-action explainability",
      "— audit-ready by design."),
-], gap=0.92, size=15.5)
+], gap=0.82, size=15)
 # mini chain visual
 bx = 8.4
 for i, (lbl, col) in enumerate([("#0 request", VIOLET), ("#1 policy", AMBER),
@@ -301,18 +307,23 @@ footer(s, 7)
 # ========================= SLIDE 8 — WHY AMEX ==============================
 s = slide()
 header(s, "Why Amex · why now", "The governance layer that makes autonomy deployable")
-bullets(s, 0.9, 2.4, 11.4, [
-    ("Amex’s 2026 direction is agentic commerce — agents that decide and act.",
-     "This is exactly that, applied to servicing."),
-    ("~80% of financial institutions lack mature agentic-AI governance,",
-     "yet most expect heavy agent use by 2027 (Deloitte)."),
-    ("Our audit trail + durable compensating workflows are the prerequisites for safe autonomy —",
-     "‘human oversight’ and ‘responsible use’ built in, not bolted on."),
-], gap=0.92, size=16.5)
-c = box(s, 0.9, 5.5, 11.5, 1.05, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
-text(s, 1.2, 5.68, 11, 0.8, [[
+bullets(s, 0.9, 2.2, 11.4, [
+    ("Amex’s 2026 direction is agentic commerce — agents that decide and act",
+     "— this is exactly that, applied to servicing."),
+    ("Only 21% of enterprises have mature agentic-AI governance, yet 74% expect to use AI agents by 2027",
+     "(Deloitte) — most are scaling agents without the guardrails."),
+    ("Deloitte names the missing controls: audit trails of every agent action + human-approval boundaries",
+     "— the exact two things we built."),
+], gap=0.9, size=15.5)
+box(s, 0.9, 5.05, 11.5, 1.0, fill=CARD, line=ACCENT, line_w=1.25, radius=True)
+text(s, 1.2, 5.2, 11, 0.8, [[
     R("“With every use case, we’ve ensured there is human oversight.”", 15, WHITE, True),
-    R("   — Amex CIO, on responsible AI. We make that oversight provable and scalable.", 13, MUTED)]])
+    R("   — Ravi Radhakrishnan, EVP & CIO, American Express (Forbes, 2025)", 12.5, MUTED)]])
+text(s, 0.9, 6.3, 11.5, 0.5, [[
+    R("Sources:  ", 9.5, ACCENT, True),
+    R("Deloitte, “Agentic AI is scaling faster than guardrails” (2025)   ·   "
+      "Forbes / Peter High, “Ravi Radhakrishnan on Driving AI Innovation at American Express” (May 2025)",
+      9.5, MUTED)]])
 footer(s, 8)
 
 # ========================= SLIDE 9 — ARCHITECTURE =========================

@@ -1,78 +1,103 @@
 # End-to-End Servicing Agent — CodeStreet 2026 (Amex)
 
 A conversational AI agent that **fully resolves** high-frequency card-servicing
-requests — **fee reversals, credit-limit increases, card replacements** — in a
-single interaction, keeps a **tamper-evident hash-chained audit trail** of every
-decision, and **escalates to a human with full context** when policy limits are
-hit. Plus an **autonomous, Temporal-orchestrated monitor** (the "guardian agent")
-that detects unusual card activity and acts on its own — beyond the base problem
-statement.
+requests — **fee reversals, credit-limit increases, card replacements** — keeps a
+**tamper-evident hash-chained audit trail** of every decision, and **escalates to
+a human with full context** when policy limits are hit.
+
+Two differentiators beyond a basic servicing bot:
+
+1. **Durable servicing cases (Temporal)** — high-stakes requests become durable
+   workflows: a multi-step **saga with automatic compensation** (if a step fails,
+   completed steps roll back — no partial financial state), a **durable
+   human-in-the-loop** approval that waits on an underwriter (surviving restarts),
+   and **live queryable status**.
+2. **Neo4j audit graph** — the audit trail is persisted to Neo4j Aura and rendered
+   as an analyst-friendly graph (Cytoscape) showing the full chain-of-custody.
+
+Out-of-scope messages are handled intelligently (answered, escalated with
+context, or clarified) — but the agent only ever *acts* on the three scoped
+intents.
 
 ## Architecture
 
 ```
-Next.js UI  ──HTTP──►  FastAPI  ──►  LangGraph agent
-(chat + live                          ├─ classifier (Gemini, few-shot + structured output + confidence)
- audit panel +                        ├─ policy gates (auto-approve vs escalate)
- alert banner)                        ├─ 3 resolution flows → mock card backend
-                                      └─ hash-chained audit chain (SHA-256, tamper-evident)
+Next.js UI ──HTTP──► FastAPI ──► LangGraph agent
+(chat · cases ·                   ├─ classifier (Gemini: few-shot + structured output + confidence)
+ audit trail ·                    ├─ policy gates (auto-resolve vs escalate)
+ audit graph)                     ├─ 3 resolution flows → mock card backend
+                                  ├─ assistant (out-of-scope: answer / escalate / clarify)
+                                  └─ hash-chained audit chain (SHA-256)
 
-Temporal dev server ──► Worker ──► CardMonitorWorkflow (durable timer loop)
-                                      └─ scan activity ──HTTP──► FastAPI /monitor/tick
-                                                                  └─ detect anomaly → auto-freeze → alert → audit
+Temporal server ─► Worker ─► ServicingCaseWorkflow (durable)
+                              ├─ human-in-the-loop approval (signal + durable wait)
+                              ├─ saga forward steps ──HTTP──► /internal/action
+                              └─ on failure: compensate completed steps in reverse
+
+FastAPI /graph ─► Neo4j Aura (persist audit trail) ─► Cytoscape graph in UI
+                  (falls back to in-memory graph if Neo4j is unavailable)
 ```
 
-- **Backend**: Python 3.12 · FastAPI · LangChain/LangGraph · `langchain-google-genai` (Gemini) · Temporal (`temporalio`)
-- **Frontend**: Next.js 16 · Tailwind · Web Speech API (voice)
-- **Why Gemini**: model-agnostic via LangChain; set `LLM_PROVIDER=openai` to switch.
+- **Backend**: Python 3.12 · FastAPI · LangChain/LangGraph · `langchain-google-genai`
+  (Gemini, model-agnostic) · Temporal (`temporalio`) · `neo4j`
+- **Frontend**: Next.js 16 · Tailwind · Cytoscape · Web Speech API (voice)
 
-> Note: the project source lives on the SSD (exFAT). The Python venv lives on the
+> The project source lives on the SSD (exFAT). The Python venv lives on the
 > internal disk at `~/.venvs/cs2026-backend` (exFAT can't host a uv venv). The run
-> scripts export `UV_PROJECT_ENVIRONMENT` so this is transparent.
+> scripts export `UV_PROJECT_ENVIRONMENT`, so this is transparent.
 
-## Run it (5 terminals)
+## Configuration
+
+Copy `backend/.env.example` → `backend/.env` and set:
+- `GOOGLE_API_KEY` (Gemini) — or set `LLM_PROVIDER=openai` + `OPENAI_API_KEY`.
+- `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` / `NEO4J_DATABASE` (Aura). If
+  omitted or unreachable, the audit graph falls back to an in-memory build.
+
+## Run it
 
 ```bash
-# 1. Temporal dev server (UI at http://localhost:8233)
-scripts/run_temporal.sh
-
-# 2. Backend API (http://127.0.0.1:8010)
-scripts/run_backend.sh
-
-# 3. Temporal worker
-scripts/run_worker.sh
-
-# 4. Start the durable monitor workflow (run once)
-scripts/start_monitor.sh
-
-# 5. Frontend (http://localhost:3010)
-scripts/run_frontend.sh
+scripts/run_temporal.sh    # 1) Temporal dev server (UI http://localhost:8233)
+scripts/run_backend.sh     # 2) FastAPI (http://127.0.0.1:8010)
+scripts/run_worker.sh      # 3) Temporal worker (hosts ServicingCaseWorkflow)
+scripts/run_frontend.sh    # 4) Next.js UI (http://localhost:3010)
 ```
 
 Evals for the slide metrics:
 ```bash
-scripts/run_evals.sh      # accuracy, per-intent, first-contact resolution
+scripts/run_evals.sh       # accuracy, per-intent, first-contact resolution
 ```
+
+> exFAT tip: if the frontend errors with "Failed to open database" after a
+> force-kill, clear the Turbopack cache: `rm -rf frontend/.next && scripts/run_frontend.sh`.
 
 ## Demo script (~3 min)
 
-1. **Fee reversal** — "Please waive my $39 late fee." → resolved instantly; watch
-   the audit trail grow (classifier → policy → backend → agent).
-2. **Escalation** — "Bump my limit to $50,000." → policy gate → **escalated to a
-   human with a full context summary** (no repeating yourself).
-3. **Tamper demo** — hover any audit entry → **tamper** → the verify badge flips to
-   "⚠ Broken @ seq N". Immutability, proven live.
-4. **Autonomous guardian** — click **⚡ Simulate suspicious charge**. Do nothing.
-   Within ~10s the Temporal monitor wakes, **freezes the card on its own**, and a
-   🛡️ alert banner appears — all logged to the same audit chain.
+1. **Resolve** — "Please waive my $39 late fee." → resolved instantly; the audit
+   trail grows (classifier → policy → backend → agent).
+2. **Escalate** — "Bump my limit to $50,000." (via chat) → policy gate → escalated
+   with a full context summary.
+3. **Out-of-scope** — "Why is my statement so high?" → answered conversationally;
+   "I want to dispute a charge" → escalated with handoff context.
+4. **Durable saga** — toolbar **New card** → watch the 4-step saga complete.
+5. **Auto-rollback** — toolbar **Card → rollback** → the fulfillment step fails and
+   completed steps compensate in reverse; the account is left consistent.
+6. **Human-in-the-loop** — toolbar **$50k limit → approval** → the case waits at
+   `awaiting_approval`; click **Approve** and the saga runs.
+7. **Tamper demo** — hover an audit entry → **tamper** → verify flips to "Broken @
+   seq N".
+8. **Audit graph** — switch the right panel to **Audit graph** to explore the
+   chain-of-custody in Neo4j.
 
 ## Key endpoints
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/chat` | Resolve a servicing request |
+| POST | `/chat` | Resolve a servicing request (or answer/escalate/clarify) |
 | GET | `/audit` · `/audit/verify` | Fetch chain · verify integrity |
 | POST | `/audit/tamper` | Demo: break the chain |
-| POST | `/monitor/tick` | One autonomous scan (called by Temporal) |
-| POST | `/simulate/suspicious/{id}` | Demo: inject an unusual charge |
-| GET | `/alerts` | Proactive alerts raised by the monitor |
+| POST | `/cases/start` | Start a durable servicing case |
+| POST | `/cases/{id}/decision` | Underwriter approve/deny (signal) |
+| GET | `/cases` · `/cases/{id}` | Live case status (workflow query) |
+| POST | `/internal/action/{action}` | One saga step (called by the workflow) |
+| GET | `/graph` | Audit trail as a graph (Neo4j, memory fallback) |
+| GET | `/member/{id}` | Live account snapshot |

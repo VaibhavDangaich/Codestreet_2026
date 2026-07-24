@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { GraphData, getGraph } from "../lib/api";
 
 const TYPE_COLOR: Record<string, string> = {
-  entry: "#2E8BF0",
-  actor: "#A68BF0",
-  member: "#3FD08A",
-  session: "#F2B04B",
+  entry: "#2563EB",
+  actor: "#7C3AED",
+  member: "#059669",
+  session: "#D97706",
 };
 
 const LEGEND = [
@@ -39,43 +39,40 @@ export default function GraphView() {
           {
             selector: "node",
             style: {
-              "background-color": (n: any) => TYPE_COLOR[n.data("type")] ?? "#888",
+              "background-color": (n: any) => TYPE_COLOR[n.data("type")] ?? "#94A3B8",
               label: "data(label)",
-              color: "#dbe4f0",
+              color: "#334155",
               "font-size": 9,
+              "font-weight": 500,
               "text-valign": "bottom",
-              "text-margin-y": 3,
-              width: (n: any) => (n.data("type") === "entry" ? 20 : 30),
-              height: (n: any) => (n.data("type") === "entry" ? 20 : 30),
-              "border-width": 2,
-              "border-color": (n: any) =>
-                TYPE_COLOR[n.data("type")] ?? "#888",
-              "border-opacity": 0.4,
+              "text-margin-y": 4,
+              width: (n: any) => (n.data("type") === "entry" ? 18 : 28),
+              height: (n: any) => (n.data("type") === "entry" ? 18 : 28),
+              "border-width": 3,
+              "border-color": "#ffffff",
             },
           },
           {
             selector: "edge",
             style: {
               width: 1,
-              "line-color": "rgba(255,255,255,0.15)",
-              "target-arrow-color": "rgba(255,255,255,0.25)",
+              "line-color": "#CBD5E1",
+              "target-arrow-color": "#94A3B8",
               "target-arrow-shape": "triangle",
               "arrow-scale": 0.7,
               "curve-style": "bezier",
               label: "data(label)",
               "font-size": 7,
-              color: "rgba(255,255,255,0.35)",
+              color: "#94A3B8",
               "text-rotation": "autorotate",
             },
           },
           {
-            // highlight the hash chain (the immutable ledger)
             selector: 'edge[label = "NEXT"]',
             style: {
               width: 2.5,
-              "line-color": "#2E8BF0",
-              "target-arrow-color": "#2E8BF0",
-              "line-style": "solid",
+              "line-color": "#2563EB",
+              "target-arrow-color": "#2563EB",
             },
           },
         ],
@@ -91,7 +88,7 @@ export default function GraphView() {
         if (cancelled || !cyRef.current) return;
         setSource(g.source);
         const total = g.nodes.length + g.edges.length;
-        if (!first && total === countRef.current) return; // no change, avoid jitter
+        if (!first && total === countRef.current) return;
         countRef.current = total;
         const cy = cyRef.current;
         cy.elements().remove();
@@ -118,18 +115,18 @@ export default function GraphView() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/30 backdrop-blur">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Audit Graph</h2>
-          <p className="text-[11px] text-white/40">
+          <h2 className="text-sm font-semibold text-slate-900">Audit Graph</h2>
+          <p className="text-[11px] text-slate-400">
             Analyst view · chain-of-custody as a graph
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex gap-2 text-[10px]">
+          <div className="hidden gap-2.5 text-[10px] sm:flex">
             {LEGEND.map(([t, label]) => (
-              <span key={t} className="flex items-center gap-1 text-white/50">
+              <span key={t} className="flex items-center gap-1 text-slate-500">
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ background: TYPE_COLOR[t] }}
@@ -142,20 +139,18 @@ export default function GraphView() {
             <span
               className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
                 source === "neo4j"
-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                  : "border-amber-500/40 bg-amber-500/15 text-amber-300"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
               }`}
               title={source === "neo4j" ? "Backed by Neo4j Aura" : "Neo4j unavailable — memory fallback"}
             >
-              {source === "neo4j" ? "● Neo4j" : "● memory"}
+              {source === "neo4j" ? "Neo4j" : "memory"}
             </span>
           )}
         </div>
       </div>
-      <div ref={boxRef} className="min-h-[520px] flex-1" />
-      {error && (
-        <p className="px-4 py-2 text-[11px] text-rose-300/70">{error}</p>
-      )}
+      <div ref={boxRef} className="min-h-[520px] flex-1 bg-[#fbfcfe]" />
+      {error && <p className="px-4 py-2 text-[11px] text-rose-500">{error}</p>}
     </div>
   );
 }

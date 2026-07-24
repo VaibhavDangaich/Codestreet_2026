@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AuditPanel from "./components/AuditPanel";
 import CasesPanel from "./components/CasesPanel";
 import GraphView from "./components/GraphView";
+import { IconMark, IconMic, IconSend } from "./components/icons";
 import {
   AuditEntry,
   Case,
@@ -36,15 +37,21 @@ const QUICK = [
   "Please waive my $39 late fee, I paid a day late.",
   "I've been loyal for years — can I get a higher credit limit?",
   "I lost my card at the airport, I need a new one asap.",
-  "Please bump my credit limit to $50,000.",
+  "Why is my statement so high this month?",
+];
+
+const CASE_ACTIONS: { label: string; dot: string; run: () => [string, Record<string, unknown>, boolean] }[] = [
+  { label: "New card", dot: "bg-emerald-500", run: () => ["card_replacement", { fee: 0 }, false] },
+  { label: "Card → rollback", dot: "bg-amber-500", run: () => ["card_replacement", {}, true] },
+  { label: "$50k limit → approval", dot: "bg-sky-500", run: () => ["limit_increase", { new_limit: 50000 }, false] },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
-  resolved: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
-  escalated: "border-amber-500/40 bg-amber-500/15 text-amber-300",
-  needs_info: "border-sky-500/40 bg-sky-500/15 text-sky-300",
-  rejected: "border-rose-500/40 bg-rose-500/15 text-rose-300",
-  answered: "border-violet-500/40 bg-violet-500/15 text-violet-300",
+  resolved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  escalated: "border-amber-200 bg-amber-50 text-amber-700",
+  needs_info: "border-sky-200 bg-sky-50 text-sky-700",
+  rejected: "border-rose-200 bg-rose-50 text-rose-700",
+  answered: "border-violet-200 bg-violet-50 text-violet-700",
 };
 
 export default function Home() {
@@ -62,7 +69,6 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // one session per browser load
   useEffect(() => {
     setSessionId("web-" + Math.random().toString(36).slice(2, 9));
   }, []);
@@ -98,8 +104,6 @@ export default function Home() {
     refreshMember(memberId);
   }, [refreshAudit, refreshMember, memberId]);
 
-  // Poll so durable cases advance live in the UI (Temporal workflow progressing),
-  // and autonomous audit entries surface even without chatting.
   useEffect(() => {
     refreshCases();
     const t = setInterval(() => {
@@ -113,7 +117,7 @@ export default function Home() {
   async function launchCase(
     intent: string,
     params: Record<string, unknown>,
-    force_fail = false
+    force_fail: boolean
   ) {
     await startCase(memberId, intent, params, force_fail);
     refreshCases();
@@ -145,7 +149,7 @@ export default function Home() {
     } catch {
       setMessages((m) => [
         ...m,
-        { role: "agent", text: "⚠ Could not reach the agent backend on :8010." },
+        { role: "agent", text: "Could not reach the agent backend on :8010." },
       ]);
     } finally {
       setBusy(false);
@@ -187,50 +191,47 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(120%_120%_at_80%_-10%,#12203a_0%,#070b14_55%)] text-white">
-      <header className="border-b border-white/10 px-6 py-4">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">
-              End-to-End Servicing Agent
-            </h1>
-            <p className="text-xs text-white/40">
-              Resolves fee reversals · limit increases · card replacements — with
-              a verifiable audit trail
-            </p>
+    <div className="min-h-screen">
+      {/* Top bar */}
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-white">
+              <IconMark />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-700">
+                American Express · CodeStreet 2026
+              </p>
+              <h1 className="text-[15px] font-semibold leading-tight text-slate-900">
+                End-to-End Servicing Agent
+              </h1>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => launchCase("card_replacement", { fee: 0 })}
-              title="Durable saga: block old card → charge → order → notify"
-              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/20"
-            >
-              Replace card
-            </button>
-            <button
-              onClick={() => launchCase("card_replacement", {}, true)}
-              title="Force the fulfillment step to fail — watch the saga auto-roll-back"
-              className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20"
-            >
-              Replace ✕ fail → rollback
-            </button>
-            <button
-              onClick={() => launchCase("limit_increase", { new_limit: 50000 })}
-              title="Over-policy → durably waits for underwriter approval"
-              className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:bg-sky-500/20"
-            >
-              $50k limit → approval
-            </button>
+            <div className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 md:flex">
+              {CASE_ACTIONS.map((a) => (
+                <button
+                  key={a.label}
+                  onClick={() => launchCase(...a.run())}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${a.dot}`} />
+                  {a.label}
+                </button>
+              ))}
+            </div>
             <select
               value={memberId}
               onChange={(e) => {
                 setMemberId(e.target.value);
                 setMessages([]);
               }}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400"
             >
               {MEMBERS.map((m) => (
-                <option key={m.id} value={m.id} className="bg-slate-900">
+                <option key={m.id} value={m.id}>
                   {m.label}
                 </option>
               ))}
@@ -239,66 +240,53 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Durable servicing cases — the Temporal showcase */}
       <div className="mx-auto max-w-7xl px-6 pt-4">
         <CasesPanel cases={cases} onChanged={refreshCases} />
       </div>
 
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-2">
-        {/* LEFT: chat + member */}
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-6 py-4 lg:grid-cols-2">
+        {/* LEFT: member + chat */}
         <section className="flex flex-col gap-4">
           {member && (
-            <div className="grid grid-cols-3 gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-              <div>
-                <p className="text-[11px] text-white/40">Member</p>
-                <p className="font-medium">{member.name}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-white/40">Credit limit</p>
-                <p className="font-medium">
-                  ${member.credit_limit.toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-white/40">Card status</p>
-                <p className="font-medium capitalize">{member.card_status}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-white/40">Standing</p>
-                <p
-                  className={
-                    member.good_standing ? "text-emerald-300" : "text-rose-300"
-                  }
-                >
-                  {member.good_standing ? "Good" : "Delinquent"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-white/40">Open fees</p>
-                <p className="font-medium">
-                  {member.fees.filter((f) => !f.reversed).length}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-white/40">Reversals used</p>
-                <p className="font-medium">{member.fee_reversals_used}</p>
-              </div>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm shadow-sm">
+              {[
+                ["Member", member.name],
+                ["Credit limit", `$${member.credit_limit.toLocaleString()}`],
+                ["Card status", member.card_status],
+                [
+                  "Standing",
+                  member.good_standing ? "Good" : "Delinquent",
+                  member.good_standing ? "text-emerald-600" : "text-rose-600",
+                ],
+                ["Open fees", String(member.fees.filter((f) => !f.reversed).length)],
+                ["Reversals used", String(member.fee_reversals_used)],
+              ].map(([label, value, cls]) => (
+                <div key={label} className="bg-white px-4 py-3">
+                  <p className="text-[11px] text-slate-400">{label}</p>
+                  <p className={`font-medium capitalize text-slate-800 ${cls ?? ""}`}>
+                    {value}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
 
-          <div className="flex min-h-[420px] flex-1 flex-col rounded-2xl border border-white/10 bg-black/30 backdrop-blur">
+          <div className="flex min-h-[440px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 px-4 py-2.5">
+              <h2 className="text-sm font-semibold text-slate-900">Conversation</h2>
+            </div>
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.length === 0 && (
                 <div className="space-y-2 pt-6">
-                  <p className="text-center text-sm text-white/40">
-                    Try a request:
+                  <p className="text-center text-xs text-slate-400">
+                    Try a request
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
                     {QUICK.map((q) => (
                       <button
                         key={q}
                         onClick={() => submit(q)}
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                       >
                         {q}
                       </button>
@@ -316,21 +304,21 @@ export default function Home() {
                   <div
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
                       m.role === "user"
-                        ? "bg-sky-600 text-white"
-                        : "border border-white/10 bg-white/5 text-white/90"
+                        ? "bg-blue-600 text-white"
+                        : "border border-slate-200 bg-white text-slate-700"
                     }`}
                   >
                     {m.role === "agent" && m.status && (
                       <div className="mb-1.5 flex items-center gap-2">
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize ${
                             STATUS_BADGE[m.status]
                           }`}
                         >
                           {m.status.replace("_", " ")}
                         </span>
                         {m.classification && (
-                          <span className="text-[10px] text-white/40">
+                          <span className="text-[10px] text-slate-400">
                             {m.classification.intent} ·{" "}
                             {(m.classification.confidence * 100).toFixed(0)}%
                           </span>
@@ -339,9 +327,9 @@ export default function Home() {
                     )}
                     <p>{m.text}</p>
                     {m.escalation && (
-                      <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200/90">
+                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
                         <span className="font-semibold">
-                          👤 Handoff context sent to specialist:
+                          Handoff context sent to specialist:
                         </span>{" "}
                         {m.escalation}
                       </div>
@@ -351,54 +339,54 @@ export default function Home() {
               ))}
               {busy && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white/40">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-400">
                     resolving…
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 border-t border-white/10 p-3">
+            <div className="flex items-center gap-2 border-t border-slate-200 p-3">
               <button
                 onClick={toggleVoice}
-                className={`grid h-9 w-9 place-items-center rounded-lg border text-sm ${
+                className={`grid h-9 w-9 place-items-center rounded-lg border text-sm transition ${
                   listening
-                    ? "animate-pulse border-rose-500/50 bg-rose-500/20 text-rose-300"
-                    : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                    ? "animate-pulse border-rose-300 bg-rose-50 text-rose-600"
+                    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
                 }`}
                 title="Voice input (Chrome)"
               >
-                🎤
+                <IconMic />
               </button>
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit(input)}
                 placeholder="Ask the servicing agent…"
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-white/30"
+                className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-400"
               />
               <button
                 onClick={() => submit(input)}
                 disabled={busy}
-                className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
               >
-                Send
+                <IconSend /> Send
               </button>
             </div>
           </div>
         </section>
 
-        {/* RIGHT: audit trail / graph (tabbed) */}
-        <section className="flex h-[calc(100vh-8rem)] flex-col gap-2 lg:sticky lg:top-4">
-          <div className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1 text-xs">
+        {/* RIGHT: audit trail / graph */}
+        <section className="flex h-[calc(100vh-8rem)] flex-col gap-2 lg:sticky lg:top-[4.5rem]">
+          <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1 text-xs shadow-sm">
             {(["audit", "graph"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setRightTab(t)}
-                className={`flex-1 rounded-md px-3 py-1.5 font-medium capitalize transition ${
+                className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
                   rightTab === t
-                    ? "bg-sky-600 text-white"
-                    : "text-white/50 hover:text-white/80"
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 {t === "audit" ? "Audit trail" : "Audit graph"}

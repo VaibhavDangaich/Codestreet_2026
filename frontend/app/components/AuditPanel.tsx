@@ -1,14 +1,17 @@
 "use client";
 
 import { AuditEntry, Verify } from "../lib/api";
+import { IconRefresh } from "./icons";
 
 const ACTOR_STYLES: Record<string, string> = {
-  system: "bg-slate-500/15 text-slate-300 border-slate-500/30",
-  classifier: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  policy: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  backend: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  agent: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  monitor: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+  system: "bg-slate-100 text-slate-600 border-slate-200",
+  classifier: "bg-violet-50 text-violet-700 border-violet-200",
+  policy: "bg-amber-50 text-amber-700 border-amber-200",
+  backend: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  agent: "bg-sky-50 text-sky-700 border-sky-200",
+  saga: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  case: "bg-blue-50 text-blue-700 border-blue-200",
+  human: "bg-teal-50 text-teal-700 border-teal-200",
 };
 
 function short(h: string) {
@@ -27,13 +30,13 @@ export default function AuditPanel({
   onRefresh: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/30 backdrop-blur">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold tracking-wide text-white">
+          <h2 className="text-sm font-semibold text-slate-900">
             Immutable Audit Trail
           </h2>
-          <p className="text-[11px] text-white/40">
+          <p className="text-[11px] text-slate-400">
             SHA-256 hash-chained · tamper-evident
           </p>
         </div>
@@ -42,28 +45,29 @@ export default function AuditPanel({
             <span
               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
                 verify.intact
-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                  : "border-rose-500/40 bg-rose-500/15 text-rose-300"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
               }`}
             >
               {verify.intact
-                ? `✓ Chain intact (${verify.total})`
-                : `⚠ Broken @ seq ${verify.broken_at_seq}`}
+                ? `Chain intact · ${verify.total}`
+                : `Broken @ seq ${verify.broken_at_seq}`}
             </span>
           )}
           <button
             onClick={onRefresh}
-            className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-white/60 hover:bg-white/5"
+            className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+            aria-label="Refresh"
           >
-            ↻
+            <IconRefresh />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
+      <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50/60 px-3 py-3">
         {entries.length === 0 && (
-          <p className="pt-10 text-center text-sm text-white/30">
-            No audit events yet. Send a request to watch the chain grow.
+          <p className="pt-10 text-center text-sm text-slate-400">
+            No audit events yet. Interact with the agent to grow the chain.
           </p>
         )}
         {entries.map((e) => {
@@ -72,15 +76,13 @@ export default function AuditPanel({
           return (
             <div
               key={e.seq}
-              className={`group rounded-lg border p-2.5 text-xs transition ${
-                broken
-                  ? "border-rose-500/50 bg-rose-500/10"
-                  : "border-white/10 bg-white/[0.03]"
+              className={`group rounded-lg border bg-white p-2.5 text-xs shadow-sm transition ${
+                broken ? "border-rose-300 ring-1 ring-rose-200" : "border-slate-200"
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-white/30">#{e.seq}</span>
+                  <span className="font-mono text-slate-300">#{e.seq}</span>
                   <span
                     className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${
                       ACTOR_STYLES[e.actor] ?? ACTOR_STYLES.system
@@ -88,25 +90,25 @@ export default function AuditPanel({
                   >
                     {e.actor}
                   </span>
-                  <span className="font-medium text-white/80">{e.action}</span>
+                  <span className="font-medium text-slate-700">{e.action}</span>
                 </div>
                 <button
                   onClick={() => onTamper(e.seq)}
                   title="Demo: tamper with this entry"
-                  className="opacity-0 transition group-hover:opacity-100 text-[10px] text-rose-400/70 hover:text-rose-300"
+                  className="text-[10px] text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-rose-500"
                 >
                   tamper
                 </button>
               </div>
               {Object.keys(e.payload).length > 0 && (
-                <pre className="mt-1.5 overflow-x-auto rounded bg-black/40 p-2 text-[10px] leading-relaxed text-white/50">
+                <pre className="mt-1.5 overflow-x-auto rounded-md border border-slate-100 bg-slate-50 p-2 text-[10px] leading-relaxed text-slate-500">
                   {JSON.stringify(e.payload, null, 2)}
                 </pre>
               )}
-              <div className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-white/25">
+              <div className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-slate-300">
                 <span title={e.prev_hash}>prev {short(e.prev_hash)}</span>
-                <span className="text-white/15">→</span>
-                <span title={e.hash} className="text-white/40">
+                <span>→</span>
+                <span title={e.hash} className="text-slate-400">
                   {short(e.hash)}
                 </span>
               </div>

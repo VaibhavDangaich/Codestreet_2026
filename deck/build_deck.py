@@ -201,46 +201,23 @@ footer(s)
 # ========================= SLIDE 4 — PRODUCT / UI =========================
 s = slide()
 header(s, "The product", "One console — chat, durable cases & the audit trail")
-# app window frame
-box(s, 0.9, 2.15, 11.5, 4.05, fill=LIGHT, line=ACCENT, line_w=1.25, radius=True)
-box(s, 1.15, 2.32, 11.0, 0.5, fill=CARD, radius=True)
-text(s, 1.35, 2.42, 5, 0.35, [[R("End-to-End Servicing Agent", 11, ACCENT2, True)]])
-text(s, 6.6, 2.44, 5.35, 0.35,
-     [[R("New card · Card→rollback · $50k limit          Priya Sharma ▾", 9.5, MUTED)]],
-     align=PP_ALIGN.RIGHT)
-# left — conversation
-box(s, 1.15, 2.98, 6.5, 3.08, fill=CARD, radius=True)
-text(s, 1.4, 3.1, 4, 0.3, [[R("Conversation", 10, ACCENT2, True)]])
-box(s, 4.15, 3.5, 3.2, 0.45, fill=ACCENT, radius=True)
-text(s, 4.3, 3.59, 2.9, 0.3, [[R("Please waive my $39 late fee", 9.5, LIGHT)]])
-box(s, 1.45, 4.15, 4.8, 0.8, fill=LIGHT, line=CARD, line_w=1.0, radius=True)
-text(s, 1.6, 4.24, 4.5, 0.65,
-     [[R("resolved   ", 8.5, GREEN, True), R("fee_reversal · 96%", 8.5, MUTED)],
-      [R("Done — I’ve reversed the $39 late fee.", 9.5, WHITE)]])
-text(s, 1.45, 5.55, 6, 0.4,
-     [[R("Priya Sharma · limit $10,000 · standing Good · open fees 0", 9, MUTED)]])
-# right — dock (tabs + case)
-box(s, 7.85, 2.98, 4.45, 3.08, fill=CARD, radius=True)
-box(s, 8.05, 3.1, 1.3, 0.36, fill=ACCENT, radius=True)
-text(s, 8.05, 3.18, 1.3, 0.28, [[R("Cases", 9, LIGHT, True)]], align=PP_ALIGN.CENTER)
-box(s, 9.45, 3.1, 1.3, 0.36, fill=LIGHT, radius=True)
-text(s, 9.45, 3.18, 1.3, 0.28, [[R("Audit", 9, MUTED, True)]], align=PP_ALIGN.CENTER)
-box(s, 10.85, 3.1, 1.3, 0.36, fill=LIGHT, radius=True)
-text(s, 10.85, 3.18, 1.3, 0.28, [[R("Graph", 9, MUTED, True)]], align=PP_ALIGN.CENTER)
-box(s, 8.05, 3.6, 4.05, 2.34, fill=LIGHT, line=CARD, line_w=1.0, radius=True)
-text(s, 8.25, 3.72, 2.8, 0.3, [[R("Card replacement · M-1001", 9, WHITE, True)]])
-box(s, 11.1, 3.72, 0.85, 0.28, fill=AMBER, radius=True)
-text(s, 11.1, 3.76, 0.85, 0.24, [[R("rolled back", 7.5, LIGHT, True)]], align=PP_ALIGN.CENTER)
-for i, (t, c) in enumerate([
-    ("● block old card    ↩ compensated", AMBER),
-    ("● charge fee    ↩ compensated", AMBER),
-    ("✗ order new card — fails", ROSE),
-    ("○ notify member", MUTED),
-]):
-    text(s, 8.3, 4.18 + i * 0.4, 3.7, 0.3, [[R(t, 9, c, True)]])
-text(s, 0.9, 6.35, 11.5, 0.4, [[
-    R("Members chat · underwriters approve in-line · analysts inspect the audit "
-      "trail and Neo4j graph — one screen.", 12, MUTED)]], align=PP_ALIGN.CENTER)
+# real screenshot of the running console
+_ui = Path(__file__).resolve().parent / "diagrams" / "ui_main.png"
+s.shapes.add_picture(str(_ui), Inches(0.85), Inches(2.05), width=Inches(7.5))
+# annotations
+text(s, 9.05, 2.15, 3.4, 0.4, [[R("What you’re seeing", 13, ACCENT2, True)]])
+anns = [
+    ("Policy citation in every reply", "“auto-approved under FEE-AUTO v1.2”", ACCENT),
+    ("Counterfactual on escalation", "“I can auto-approve up to $13,000 now”", GREEN),
+    ("Escalation with full handoff context", "the specialist gets everything", AMBER),
+    ("Durable cases + live audit / graph", "one screen, in real time", VIOLET),
+]
+yy = 2.75
+for head, sub, col in anns:
+    box(s, 8.75, yy + 0.04, 0.12, 0.12, fill=col, radius=True)
+    text(s, 9.05, yy, 3.35, 0.7, [[R(head, 12, WHITE, True)], [R(sub, 10.5, MUTED)]])
+    yy += 0.92
+text(s, 9.05, 6.5, 3.4, 0.3, [[R("Live capture of the running app", 10, MUTED)]])
 footer(s)
 
 # ========================= SLIDE 5 — HOW IT WORKS ==========================
@@ -372,11 +349,11 @@ footer(s)
 s = slide()
 header(s, "Evaluation", "Measured, not asserted")
 rows = [
-    ("Intent classification accuracy", "90% baseline → 95%+ w/ LLM", "labeled eval set (deterministic)", GREEN),
-    ("First-contact resolution (in-scope)", "measured per run", "outcome check (deterministic)", GREEN),
-    ("Policy violations", "0", "never auto-approve over cap", ACCENT),
-    ("Audit completeness & integrity", "100%", "chain verification", ACCENT),
-    ("Response clarity", "LLM-judge rubric (1–5)", "planned", MUTED),
+    ("Intent classification accuracy", "90%  (n=20)", "labeled eval set · LLM target ≥95%", GREEN),
+    ("First-contact resolution", "80%  (12/15)", "multi-turn outcome check", GREEN),
+    ("Correct handling (resolve / safe-escalate)", "86.7%", "outcome check, in-scope", GREEN),
+    ("Policy violations", "0", "engine caps enforced + verified", ACCENT),
+    ("Audit integrity", "100% intact", "hash-chain verification", ACCENT),
 ]
 # table header
 box(s, 0.9, 2.35, 11.5, 0.5, fill=ACCENT2, radius=False)

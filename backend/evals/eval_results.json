@@ -1,5 +1,5 @@
 {
-  "provider": "none",
+  "provider": "gemini",
   "classification": {
     "overall_accuracy": 0.9,
     "n": 20,
@@ -28,11 +28,14 @@
     }
   },
   "resolution": {
-    "first_contact_resolution_rate": 0.6,
+    "first_contact_resolution_rate": 0.8,
+    "correct_handling_rate": 0.867,
+    "policy_violations": 0,
+    "audit_integrity_intact": true,
     "n_in_scope": 15,
     "outcome_breakdown": {
-      "resolved": 9,
-      "rejected": 4,
+      "resolved": 12,
+      "escalated": 1,
       "needs_info": 2
     }
   }

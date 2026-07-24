@@ -41,6 +41,13 @@ def health():
     return {"ok": True}
 
 
+@app.post("/reset")
+def reset():
+    """Restore pristine member state (handy for demos / screenshots)."""
+    cards.reset_seed()
+    return {"ok": True}
+
+
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
     state = run_agent(req.member_id, req.message, req.session_id)

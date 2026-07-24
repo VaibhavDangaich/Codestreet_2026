@@ -31,26 +31,36 @@ class Member:
 
 
 # --- seed data used by the demo -------------------------------------------
-_MEMBERS: dict[str, Member] = {
-    "M-1001": Member(
-        member_id="M-1001",
-        name="Priya Sharma",
-        credit_limit=10000.0,
-        good_standing=True,
-        fees=[Fee(fee_id="F-9001", kind="late_fee", amount=39.0)],
-        recent_transactions=[
-            {"id": "T-1", "merchant": "Blue Bottle Coffee", "amount": 6.5, "city": "SF"},
-            {"id": "T-2", "merchant": "Whole Foods", "amount": 82.1, "city": "SF"},
-        ],
-    ),
-    "M-2002": Member(
-        member_id="M-2002",
-        name="Alex Chen",
-        credit_limit=4000.0,
-        good_standing=False,   # delinquent -> limit increases won't auto-approve
-        fees=[Fee(fee_id="F-9002", kind="late_fee", amount=39.0)],
-    ),
-}
+def _seed() -> dict[str, Member]:
+    return {
+        "M-1001": Member(
+            member_id="M-1001",
+            name="Priya Sharma",
+            credit_limit=10000.0,
+            good_standing=True,
+            fees=[Fee(fee_id="F-9001", kind="late_fee", amount=39.0)],
+            recent_transactions=[
+                {"id": "T-1", "merchant": "Blue Bottle Coffee", "amount": 6.5, "city": "SF"},
+                {"id": "T-2", "merchant": "Whole Foods", "amount": 82.1, "city": "SF"},
+            ],
+        ),
+        "M-2002": Member(
+            member_id="M-2002",
+            name="Alex Chen",
+            credit_limit=4000.0,
+            good_standing=False,   # delinquent -> limit increases won't auto-approve
+            fees=[Fee(fee_id="F-9002", kind="late_fee", amount=39.0)],
+        ),
+    }
+
+
+_MEMBERS: dict[str, Member] = _seed()
+
+
+def reset_seed() -> None:
+    """Restore pristine member state (used by evals to isolate cases)."""
+    global _MEMBERS
+    _MEMBERS = _seed()
 
 
 def get_member(member_id: str) -> Member:

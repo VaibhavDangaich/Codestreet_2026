@@ -86,8 +86,15 @@ def node_uncertain(state: AgentState) -> AgentState:
 def _make_handler_node(intent: Intent):
     def node(state: AgentState) -> AgentState:
         c = state["classification"]
-        res = DISPATCH[intent](state["session_id"], state["member_id"],
-                               c.extracted_fields)
+        fields = dict(c.extracted_fields)
+        # Robustly recover a target amount from the message if the classifier
+        # didn't surface one (needed for limit-increase decisions).
+        if intent == Intent.LIMIT_INCREASE and not (
+                fields.get("new_limit") or fields.get("amount")):
+            amt = _extract_amount(state["message"])
+            if amt is not None:
+                fields["new_limit"] = amt
+        res = DISPATCH[intent](state["session_id"], state["member_id"], fields)
         _log(state, "agent", "resolution_emitted",
              {"status": res.status, "intent": intent.value})
         return {"resolution": res}

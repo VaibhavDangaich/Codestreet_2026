@@ -1,18 +1,20 @@
 """The three end-to-end resolution flows.
 
-Each flow: reads member state -> checks policy (logged) -> either executes the
-backend change (logged) or escalates with a context summary. Every branch writes
-to the audit chain so the trail is complete regardless of outcome.
+The LLM proposes (intent + amounts); the Policy-as-Code engine *decides* and
+returns the exact rule that fired. Handlers execute only on an `approve`
+decision; otherwise they escalate — with a counterfactual ("I can do $X now")
+where the engine exposes a nearest-approvable figure. Every branch is audited
+with the rule citation.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from app.audit.chain import AUDIT
 from app.config import now_iso
 from app.mock_backend import card_system as cards
 from app.models.schemas import Intent, Resolution
-from app.policies.policy import POLICY
+from app.policy_engine.engine import DecisionContext, evaluate
 
 
 def _log(session_id: str, member_id: str, actor: str, action: str,
@@ -21,18 +23,29 @@ def _log(session_id: str, member_id: str, actor: str, action: str,
                         actor=actor, action=action, payload=payload)
 
 
+def _log_decision(session_id, member_id, decision, extra):
+    _log(session_id, member_id, "policy", "policy_decision", {
+        "outcome": decision.outcome, "rule_id": decision.rule_id,
+        "rule_version": decision.rule_version, "reason": decision.reason,
+        **extra})
+
+
 def _escalate(session_id: str, member_id: str, intent: Intent, reason: str,
-              context: dict) -> Resolution:
-    summary = (f"Escalating {intent.value} for {member_id}: {reason}. "
-               f"Context: {context}")
+              context: dict, *, message: Optional[str] = None,
+              citation: Optional[str] = None) -> Resolution:
+    summary = (f"Escalating {intent.value} for {member_id}: {reason}."
+               + (f" Policy: {citation}." if citation else "")
+               + f" Context: {context}")
     _log(session_id, member_id, "agent", "escalate_to_human",
-         {"intent": intent.value, "reason": reason, "context": context})
+         {"intent": intent.value, "reason": reason, "citation": citation,
+          "context": context})
     return Resolution(
         status="escalated", intent=intent,
-        message=("I can't auto-approve this one, so I'm connecting you to a "
-                 "specialist who already has your full context — you won't need "
-                 "to repeat anything."),
-        escalation_summary=summary, details={"reason": reason, **context},
+        message=message or (
+            "I can't auto-approve this one, so I'm connecting you to a specialist "
+            "who already has your full context — you won't need to repeat anything."),
+        escalation_summary=summary,
+        details={"reason": reason, "citation": citation, **context},
     )
 
 
@@ -45,29 +58,23 @@ def handle_fee_reversal(session_id, member_id, fields) -> Resolution:
         return Resolution(status="rejected", intent=Intent.FEE_REVERSAL,
                           message="I don't see any reversible fee on the account.")
 
-    checks = {
-        "fee_amount": fee.amount,
-        "auto_approve_max": POLICY.fee_auto_approve_max,
-        "reversals_used": m.fee_reversals_used,
-        "reversals_allowed": POLICY.fee_reversals_per_year,
-    }
-    _log(session_id, member_id, "policy", "evaluate_fee_reversal", checks)
+    d = evaluate(DecisionContext(intent="fee_reversal", member_id=member_id,
+                                 fee_amount=fee.amount,
+                                 reversals_used=m.fee_reversals_used))
+    _log_decision(session_id, member_id, d, {"fee_amount": fee.amount})
 
-    if fee.amount > POLICY.fee_auto_approve_max:
-        return _escalate(session_id, member_id, Intent.FEE_REVERSAL,
-                         f"fee ${fee.amount} exceeds auto-approve cap "
-                         f"${POLICY.fee_auto_approve_max}", checks)
-    if m.fee_reversals_used >= POLICY.fee_reversals_per_year:
-        return _escalate(session_id, member_id, Intent.FEE_REVERSAL,
-                         "annual reversal limit reached", checks)
+    if d.outcome != "approve":
+        return _escalate(session_id, member_id, Intent.FEE_REVERSAL, d.reason,
+                         {"fee_amount": fee.amount}, citation=d.citation)
 
     result = cards.reverse_fee(member_id, fee.fee_id)
     _log(session_id, member_id, "backend", "reverse_fee_executed", result)
     return Resolution(
         status="resolved", intent=Intent.FEE_REVERSAL,
-        message=(f"Done — I've reversed the ${fee.amount:.0f} {fee.kind.replace('_',' ')}. "
-                 f"You'll see the credit on your next statement."),
-        details=result,
+        message=(f"Done — I've reversed the ${fee.amount:.0f} "
+                 f"{fee.kind.replace('_', ' ')} (auto-approved under policy "
+                 f"{d.citation}). You'll see the credit on your next statement."),
+        details={**result, "citation": d.citation},
     )
 
 
@@ -75,54 +82,56 @@ def handle_fee_reversal(session_id, member_id, fields) -> Resolution:
 def handle_limit_increase(session_id, member_id, fields) -> Resolution:
     m = cards.get_member(member_id)
     requested = fields.get("new_limit") or fields.get("amount")
-    # No target given -> ask (this triggers the multi-turn slot-fill follow-up).
-    if not requested:
+    if not requested:  # slot-fill follow-up
         _log(session_id, member_id, "agent", "await_slot",
              {"intent": "limit_increase", "slot": "new_limit"})
         return Resolution(
             status="needs_info", intent=Intent.LIMIT_INCREASE,
-            message=(f"Happy to help. Your current limit is "
-                     f"${m.credit_limit:,.0f} — what new limit would you like?"),
+            message=(f"Happy to help. Your current limit is ${m.credit_limit:,.0f}"
+                     f" — what new limit would you like?"),
             details={"awaiting": "new_limit"})
     new_limit = float(requested)
-    increase = new_limit - m.credit_limit
 
-    cap_abs = POLICY.limit_increase_abs_max
-    cap_pct = POLICY.limit_increase_pct_max * m.credit_limit
-    checks = {
-        "current_limit": m.credit_limit, "requested_new_limit": new_limit,
-        "increase": increase, "abs_cap": cap_abs, "pct_cap": cap_pct,
-        "good_standing": m.good_standing,
-    }
-    _log(session_id, member_id, "policy", "evaluate_limit_increase", checks)
+    d = evaluate(DecisionContext(intent="limit_increase", member_id=member_id,
+                                 current_limit=m.credit_limit,
+                                 requested_new_limit=new_limit,
+                                 good_standing=m.good_standing))
+    _log_decision(session_id, member_id, d,
+                  {"current_limit": m.credit_limit, "requested_new_limit": new_limit})
 
-    if not m.good_standing:
-        return _escalate(session_id, member_id, Intent.LIMIT_INCREASE,
-                         "account not in good standing", checks)
-    if increase <= 0:
-        return Resolution(status="needs_info", intent=Intent.LIMIT_INCREASE,
-                          message="What new credit limit are you hoping for?")
-    if increase > cap_abs or increase > cap_pct:
-        return _escalate(session_id, member_id, Intent.LIMIT_INCREASE,
-                         f"increase ${increase:.0f} exceeds auto-approve caps "
-                         f"(abs ${cap_abs:.0f}, 30% ${cap_pct:.0f})", checks)
+    if d.outcome == "approve":
+        result = cards.set_credit_limit(member_id, new_limit)
+        _log(session_id, member_id, "backend", "set_credit_limit_executed", result)
+        return Resolution(
+            status="resolved", intent=Intent.LIMIT_INCREASE,
+            message=(f"Approved — your credit limit is now ${new_limit:,.0f} "
+                     f"(up from ${result['old_limit']:,.0f}), effective immediately "
+                     f"(policy {d.citation})."),
+            details={**result, "citation": d.citation})
 
-    result = cards.set_credit_limit(member_id, new_limit)
-    _log(session_id, member_id, "backend", "set_credit_limit_executed", result)
-    return Resolution(
-        status="resolved", intent=Intent.LIMIT_INCREASE,
-        message=(f"Approved — your credit limit is now ${new_limit:,.0f} "
-                 f"(up from ${result['old_limit']:,.0f}), effective immediately."),
-        details=result,
-    )
+    # escalate — with a counterfactual if the engine exposes a nearest-approvable
+    cf = ""
+    max_nl = d.max_auto_approvable
+    if max_nl and max_nl > m.credit_limit:
+        cf = (f" I can auto-approve an increase up to ${max_nl:,.0f} right now — "
+              f"want ${max_nl:,.0f} immediately, or shall I send the full "
+              f"${new_limit:,.0f} request to an underwriter?")
+    msg = (f"A ${new_limit:,.0f} limit needs underwriter review (policy "
+           f"{d.citation}).{cf}")
+    return _escalate(session_id, member_id, Intent.LIMIT_INCREASE, d.reason,
+                     {"requested_new_limit": new_limit,
+                      "max_auto_approvable": max_nl},
+                     message=msg, citation=d.citation)
 
 
 # --- 3. Card replacement ---------------------------------------------------
 def handle_card_replacement(session_id, member_id, fields) -> Resolution:
     lost_or_stolen = bool(fields.get("lost_or_stolen", False))
     reason = fields.get("reason", "damaged" if not lost_or_stolen else "lost/stolen")
-    _log(session_id, member_id, "policy", "evaluate_card_replacement",
-         {"lost_or_stolen": lost_or_stolen, "reason": reason})
+    d = evaluate(DecisionContext(intent="card_replacement", member_id=member_id,
+                                 lost_or_stolen=lost_or_stolen))
+    _log_decision(session_id, member_id, d, {"lost_or_stolen": lost_or_stolen,
+                                             "reason": reason})
 
     if lost_or_stolen:
         block = cards.block_card(member_id)
@@ -137,7 +146,7 @@ def handle_card_replacement(session_id, member_id, fields) -> Resolution:
         message=(f"Your replacement card is on the way — arriving in "
                  f"~{result['eta_days']} days (tracking {result['tracking']})."
                  f"{blocked_note}"),
-        details=result,
+        details={**result, "citation": d.citation},
     )
 
 

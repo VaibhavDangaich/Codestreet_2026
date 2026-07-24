@@ -74,12 +74,16 @@ def _fallback(message: str) -> Classification:
 
 
 def _make_llm():
+    # max_retries=0 so a quota/rate error fails fast to our fallback instead of
+    # blocking the request with exponential-backoff retries.
     if LLM_PROVIDER == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0,
-                                      google_api_key=GOOGLE_API_KEY)
+                                      google_api_key=GOOGLE_API_KEY,
+                                      max_retries=0, timeout=20)
     from langchain_openai import ChatOpenAI
-    return ChatOpenAI(model=OPENAI_MODEL, temperature=0, api_key=OPENAI_API_KEY)
+    return ChatOpenAI(model=OPENAI_MODEL, temperature=0, api_key=OPENAI_API_KEY,
+                      max_retries=0, timeout=20)
 
 
 def _build_llm_classifier():

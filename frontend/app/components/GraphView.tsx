@@ -8,6 +8,7 @@ const TYPE_COLOR: Record<string, string> = {
   actor: "#7C3AED",
   member: "#059669",
   session: "#D97706",
+  rule: "#DB2777",
 };
 
 const LEGEND = [
@@ -15,6 +16,7 @@ const LEGEND = [
   ["actor", "Actor"],
   ["member", "Member"],
   ["session", "Session"],
+  ["rule", "Policy rule"],
 ];
 
 export default function GraphView() {

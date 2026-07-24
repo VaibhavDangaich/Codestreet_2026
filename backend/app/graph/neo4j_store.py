@@ -39,6 +39,15 @@ MATCH (p:Entry {hash: row.prev_hash}), (e:Entry {seq: row.seq})
 MERGE (p)-[:NEXT]->(e)
 """
 
+_RULE = """
+UNWIND [r IN $rows WHERE r.rule_id IS NOT NULL] AS row
+MERGE (ru:Rule {id: row.rule_id})
+  SET ru.version = row.rule_version
+WITH row, ru
+MATCH (e:Entry {seq: row.seq})
+MERGE (e)-[:APPLIED_RULE]->(ru)
+"""
+
 _READ_NODES = """
 MATCH (n)
 RETURN labels(n)[0] AS type,
@@ -87,11 +96,17 @@ def sync_and_read(entries: list[dict]) -> dict[str, Any] | None:
         rows = [{"seq": e["seq"], "action": e["action"], "ts": e["ts"],
                  "hash": e["hash"], "prev_hash": e["prev_hash"],
                  "actor": e["actor"], "member": e["member_id"],
-                 "session": e["session_id"]} for e in new]
+                 "session": e["session_id"],
+                 "rule_id": (e["payload"].get("rule_id")
+                             if isinstance(e["payload"], dict) else None),
+                 "rule_version": (str(e["payload"].get("rule_version", ""))
+                                  if isinstance(e["payload"], dict) else "")}
+                for e in new]
         with driver.session(database=NEO4J_DATABASE) as s:
             if rows:
                 s.run(_UPSERT, rows=rows)
                 s.run(_CHAIN, rows=rows)
+                s.run(_RULE, rows=rows)
             node_recs = list(s.run(_READ_NODES))
             rel_recs = list(s.run(_READ_RELS))
         if entries:

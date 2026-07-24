@@ -39,6 +39,14 @@ def build_graph_from_entries(entries: list[dict]) -> dict[str, Any]:
                                "label": "ON"}})
         edges.append({"data": {"id": f"{eid}-in", "source": eid, "target": sid,
                                "label": "IN"}})
+        # decision provenance: link the entry to the policy rule that fired
+        rid = e["payload"].get("rule_id") if isinstance(e["payload"], dict) else None
+        if rid:
+            rver = e["payload"].get("rule_version", "")
+            rnode = f"rule:{rid}"
+            add_node(rnode, f"{rid} v{rver}", "rule")
+            edges.append({"data": {"id": f"{eid}-rule", "source": eid,
+                                   "target": rnode, "label": "APPLIED_RULE"}})
 
     by_hash = {e["hash"]: e["seq"] for e in entries}
     for e in entries:
